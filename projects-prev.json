@@ -1,1 +1,736 @@
-{"projects":[]}
+{
+  "projects": [
+    {
+      "projectName": "Central-West Orana REZ Transmission & Substations",
+      "location": "Central West NSW",
+      "country": "Australia",
+      "procurementStart": "Q4 2023",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation",
+        "REZ"
+      ],
+      "companies": [
+        "EnergyCo NSW",
+        "Acciona",
+        "UGL"
+      ],
+      "fundingSources": [
+        "NSW Government",
+        "Clean Energy Finance Corporation (CEFC)"
+      ],
+      "projectValue": "A$3.2 billion",
+      "capacityMW": 0,
+      "mpEngagementWindow": "Ongoing HV equipment FAT, QAQC surveillance for 330kV/500kV transformers, circuit breakers, GIS, and substation components; site supervision for commissioning in 2024-2027.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://energyco.nsw.gov.au/renewable-energy-zones/central-west-orana-rez",
+      "summary": "This project involves the construction of new 330kV and 500kV transmission lines, substations, and associated infrastructure to connect renewable energy projects within the Central-West Orana Renewable Energy Zone. Initial packages awarded, but significant HV equipment procurement and inspection needs are ongoing for future stages and components."
+    },
+    {
+      "projectName": "HumeLink 500kV Transmission Project",
+      "location": "Southern NSW",
+      "country": "Australia",
+      "procurementStart": "Q1 2024",
+      "procurementStatus": "Tender Active",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation",
+        "REZ"
+      ],
+      "companies": [
+        "Transgrid"
+      ],
+      "fundingSources": [
+        "NSW Government",
+        "Australian Government"
+      ],
+      "projectValue": "A$5.5 billion",
+      "capacityMW": 0,
+      "mpEngagementWindow": "Major tenders for 500kV transmission line construction, new substations, transformers, circuit breakers, and associated equipment are active or imminent. Significant FAT and QAQC opportunities from late 2024 onwards.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision",
+        "Technical Due Diligence"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://www.transgrid.com.au/humelink",
+      "summary": "HumeLink is a critical 500kV transmission project to connect the Snowy 2.0 pumped hydro scheme and new REZ projects to the grid. It involves new 500kV double-circuit transmission lines and substations, representing a massive demand for HV components."
+    },
+    {
+      "projectName": "Project EnergyConnect (NSW-SA Interconnector)",
+      "location": "NSW & South Australia",
+      "country": "Australia",
+      "procurementStart": "Q1 2022",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation"
+      ],
+      "companies": [
+        "Transgrid",
+        "ElectraNet",
+        "SecureEnergy (Downer, Siemens, RCR)"
+      ],
+      "fundingSources": [
+        "Australian Energy Market Operator (AEMO)",
+        "Australian Government"
+      ],
+      "projectValue": "A$3.3 billion",
+      "capacityMW": 0,
+      "mpEngagementWindow": "Ongoing HV equipment FAT for 330kV transmission lines, substations, and potentially HVDC converter station components. QAQC surveillance and commissioning inspection will be critical through 2024-2026.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://www.transgrid.com.au/energyconnect",
+      "summary": "A new 330kV interconnector between NSW and SA, including converter stations and associated infrastructure. While main construction contracts are awarded, specialist FAT for HV transformers, circuit breakers, and overall QAQC for converter stations are ongoing as phases progress towards energisation."
+    },
+    {
+      "projectName": "Waratah Super Battery & Transmission",
+      "location": "Hunter Valley, NSW",
+      "country": "Australia",
+      "procurementStart": "Q4 2022",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "BESS",
+        "HV Transmission",
+        "Substation"
+      ],
+      "companies": [
+        "EnergyCo NSW",
+        "Akira Energy (BlackRock, UPC Renewables)",
+        "GE Vernova"
+      ],
+      "fundingSources": [
+        "NSW Government"
+      ],
+      "projectValue": "A$1 billion",
+      "capacityMW": 850,
+      "mpEngagementWindow": "Specialist QAQC and FAT for HV grid connection equipment, including transformers and switchgear for the battery's integration into the 330kV network. Site supervision during commissioning in 2024-2025.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://energyco.nsw.gov.au/projects/waratah-super-battery",
+      "summary": "This project involves an 850MW/1680MWh battery energy storage system designed to act as a 'shock absorber' for the grid. It requires significant HV infrastructure for connection, with ongoing procurement and installation of specialised electrical components."
+    },
+    {
+      "projectName": "New England REZ Transmission & Substations",
+      "location": "New England region, NSW",
+      "country": "Australia",
+      "procurementStart": "Q1 2024",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation",
+        "REZ"
+      ],
+      "companies": [
+        "EnergyCo NSW"
+      ],
+      "fundingSources": [
+        "NSW Government"
+      ],
+      "projectValue": "A$2 billion (estimated)",
+      "capacityMW": 0,
+      "mpEngagementWindow": "Early tenders for detailed design, environmental assessments, and preliminary works are active. Major procurement packages for HV transmission lines (330kV, 500kV), substations, transformers, and switchgear are expected to open from late 2024 onwards.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision",
+        "Technical Due Diligence"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://energyco.nsw.gov.au/renewable-energy-zones/new-england-rez",
+      "summary": "Development of transmission infrastructure to connect renewable energy projects in the New England REZ. This includes new 330kV and 500kV transmission lines and substations, with major procurement cycles approaching."
+    },
+    {
+      "projectName": "Goyder South Stage 2 Wind & Solar",
+      "location": "Goyder, South Australia",
+      "country": "Australia",
+      "procurementStart": "Q4 2023",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "Wind",
+        "Solar PV"
+      ],
+      "companies": [
+        "Neoen"
+      ],
+      "fundingSources": [
+        "Clean Energy Finance Corporation (CEFC)",
+        "Commercial Banks"
+      ],
+      "projectValue": "A$1.5 billion (estimated)",
+      "capacityMW": 400,
+      "mpEngagementWindow": "Ongoing QAQC for specialist electrical balance of plant, including transformers and switchgear for solar and wind farms. Commissioning inspection services for grid connection assets in 2024-2025.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "Medium",
+      "sourceUrl": "https://reneweconomy.com.au/neoen-reaches-fid-on-stage-two-of-goyder-south-giant-wind-and-solar-project/",
+      "summary": "Stage 2 of the Goyder South renewable energy complex, adding significant wind and solar capacity. Construction has commenced, implying ongoing procurement of specialist electrical components and commissioning activities."
+    },
+    {
+      "projectName": "Clarke Creek Wind and Solar Farm",
+      "location": "Central Queensland",
+      "country": "Australia",
+      "procurementStart": "Q3 2022",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "Wind",
+        "Solar PV"
+      ],
+      "companies": [
+        "Squadron Energy"
+      ],
+      "fundingSources": [
+        "Squadron Energy",
+        "NAB, SMBC, Mizuho, Westpac"
+      ],
+      "projectValue": "A$1.9 billion",
+      "capacityMW": 800,
+      "mpEngagementWindow": "Ongoing QAQC and FAT for 330kV substation and transmission line connection components. Specialist inspection during construction and commissioning phases expected throughout 2024-2025.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://squadronenergy.com.au/projects/clarke-creek-wind-farm/",
+      "summary": "One of Australia's largest renewable energy projects, combining wind and solar. The project includes a new 330kV substation and transmission line connection, with significant HV equipment procurement and installation still in progress."
+    },
+    {
+      "projectName": "Golden Plains Wind Farm Stage 2",
+      "location": "Rokewood, Victoria",
+      "country": "Australia",
+      "procurementStart": "Q4 2023",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "Wind"
+      ],
+      "companies": [
+        "TagEnergy"
+      ],
+      "fundingSources": [
+        "TagEnergy",
+        "ANZ, Commonwealth Bank, Mizuho, Westpac"
+      ],
+      "projectValue": "A$1.4 billion",
+      "capacityMW": 630,
+      "mpEngagementWindow": "Early construction works and procurement for specialist balance of plant equipment, including transformers and switchgear for the grid connection, are ongoing for Stage 2. QAQC and FAT opportunities in 2024-2026.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://reneweconomy.com.au/stage-two-begins-on-australias-biggest-wind-farm/",
+      "summary": "Following FID in late 2023, Stage 2 will add another 630MW to the Golden Plains Wind Farm, making it Australia's largest. This includes new wind turbines and significant grid connection infrastructure, with active procurement for HV equipment."
+    },
+    {
+      "projectName": "Kidston Pumped Hydro and Solar Stage 3",
+      "location": "Kidston, Queensland",
+      "country": "Australia",
+      "procurementStart": "Q2 2021",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "Pumped Hydro",
+        "Solar PV",
+        "HV Transmission"
+      ],
+      "companies": [
+        "Genex Power"
+      ],
+      "fundingSources": [
+        "NAIF",
+        "ARENA",
+        "CEFC",
+        "Queensland Government"
+      ],
+      "projectValue": "A$1.2 billion",
+      "capacityMW": 250,
+      "mpEngagementWindow": "Ongoing FAT and QAQC for the 275kV transmission line, substation components, and electromechanical equipment for the pumped hydro facility. Commissioning support is expected in 2024-2025.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://genexpower.com.au/projects/kidston-pumped-hydro/",
+      "summary": "A complex project combining pumped hydro and solar, requiring significant HV transmission infrastructure. While the main civil works are advanced, specialist electrical and mechanical procurement, inspection, and commissioning for the 275kV grid connection remain active into 2025."
+    },
+    {
+      "projectName": "Hunter Power Project (850MW BESS)",
+      "location": "Hunter Valley, NSW",
+      "country": "Australia",
+      "procurementStart": "Q3 2024 (expected)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "BESS",
+        "Substation"
+      ],
+      "companies": [
+        "EnergyCo NSW",
+        "Hydro Tasmania"
+      ],
+      "fundingSources": [
+        "NSW Government"
+      ],
+      "projectValue": "A$1 billion (estimated)",
+      "capacityMW": 850,
+      "mpEngagementWindow": "Tender for major EPC and BESS equipment expected late 2024/early 2025. Significant opportunities for technical due diligence, followed by FAT and QAQC for HV connection equipment (transformers, switchgear) from 2025.",
+      "mpServices": [
+        "Technical Due Diligence",
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing"
+      ],
+      "priority": "Medium",
+      "sourceUrl": "https://energyco.nsw.gov.au/news/energyco-to-deliver-850-mw-hunter-power-project",
+      "summary": "A large-scale battery energy storage system planned for the Hunter region to provide critical firming capacity. The project is in advanced planning, with major procurement for the battery system and its HV grid connection imminent."
+    },
+    {
+      "projectName": "Western Victoria Transmission Network Project (WVTNP)",
+      "location": "Western Victoria",
+      "country": "Australia",
+      "procurementStart": "Q4 2024 (expected)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation"
+      ],
+      "companies": [
+        "AusNet Services"
+      ],
+      "fundingSources": [
+        "Victorian Government",
+        "AEMO"
+      ],
+      "projectValue": "A$1 billion (estimated)",
+      "capacityMW": 0,
+      "mpEngagementWindow": "Detailed design and environmental approvals are underway. Major procurement for 500kV transmission lines, new terminal stations, transformers, and switchgear expected to commence in 2025. Opportunities for technical due diligence, FAT, and QAQC.",
+      "mpServices": [
+        "Technical Due Diligence",
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "Medium",
+      "sourceUrl": "https://www.ausnetservices.com.au/projects/western-victoria-transmission-network-project",
+      "summary": "A new 500kV transmission line and associated infrastructure to strengthen the grid in Western Victoria and enable more renewable energy connections. The project is currently in the planning and approvals phase, with major tenders anticipated in the next 12-24 months."
+    },
+    {
+      "projectName": "Marinus Link (Tasmania-Victoria Interconnector)",
+      "location": "Bass Strait (TAS-VIC)",
+      "country": "Australia",
+      "procurementStart": "Q1 2025 (expected)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation"
+      ],
+      "companies": [
+        "Marinus Link Pty Ltd"
+      ],
+      "fundingSources": [
+        "Australian Government",
+        "Victorian Government",
+        "Tasmanian Government"
+      ],
+      "projectValue": "A$3.5 billion",
+      "capacityMW": 1500,
+      "mpEngagementWindow": "Early works tenders and FEED studies are ongoing. Major procurement for HVDC cables, converter stations, substations, transformers, and switchgear is expected to commence from 2025. Significant FAT and QAQC opportunities from 2026-2030.",
+      "mpServices": [
+        "Technical Due Diligence",
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "Medium",
+      "sourceUrl": "https://marinuslink.com.au/",
+      "summary": "A proposed HVDC interconnector linking Tasmania and Victoria, crucial for future energy security and renewable integration. While a long-term project, major HVDC equipment procurement for converter stations and substations is on the horizon."
+    },
+    {
+      "projectName": "Port Augusta Green Hydrogen Hub",
+      "location": "Port Augusta, South Australia",
+      "country": "Australia",
+      "procurementStart": "Q4 2024 (expected)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "Hydrogen",
+        "Solar PV",
+        "BESS",
+        "Substation"
+      ],
+      "companies": [
+        "Hydrogen Utility (H2U)"
+      ],
+      "fundingSources": [
+        "Clean Energy Finance Corporation (CEFC)",
+        "South Australian Government"
+      ],
+      "projectValue": "A$300 million (initial phase)",
+      "capacityMW": 75,
+      "mpEngagementWindow": "Final Investment Decision (FID) anticipated in late 2024. Procurement for electrolysers, solar PV, battery storage, and associated HV grid connection equipment (transformers, switchgear) is expected in 2025.",
+      "mpServices": [
+        "Technical Due Diligence",
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing"
+      ],
+      "priority": "Medium",
+      "sourceUrl": "https://www.cefc.com.au/media/news/2023/h2u-gets-cefc-funding-for-pioneering-green-hydrogen-plant/",
+      "summary": "A large-scale green hydrogen production facility powered by dedicated renewable energy (solar and battery storage). The project is nearing FID, with significant procurement for electrical and processing equipment anticipated."
+    },
+    {
+      "projectName": "Vena Energy Wandoan South BESS Stage 2",
+      "location": "Wandoan, Queensland",
+      "country": "Australia",
+      "procurementStart": "Q3 2024 (expected)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "BESS",
+        "Substation"
+      ],
+      "companies": [
+        "Vena Energy"
+      ],
+      "fundingSources": [
+        "Vena Energy",
+        "Commercial Banks"
+      ],
+      "projectValue": "A$300 million (estimated)",
+      "capacityMW": 150,
+      "mpEngagementWindow": "Expansion plans for the existing BESS facility. Tender for additional battery systems and associated HV grid connection components (transformers, switchgear) expected to open in late 2024/early 2025. QAQC and FAT services will be relevant.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "Medium",
+      "sourceUrl": "https://www.pv-magazine-australia.com/2023/11/02/vena-energy-commissions-stage-one-of-big-queensland-battery/",
+      "summary": "Following the commissioning of Stage 1, Vena Energy is planning an expansion of its Wandoan South Battery Energy Storage System. This new stage will involve procurement for battery modules and HV electrical integration."
+    },
+    {
+      "projectName": "GNA Porto do Açu Offshore Wind / Green Hydrogen Hub",
+      "location": "Porto do Açu, Rio de Janeiro",
+      "country": "Brazil",
+      "procurementStart": "Q4 2024 (expected)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "Offshore Wind",
+        "Hydrogen",
+        "Substation",
+        "HV Transmission"
+      ],
+      "companies": [
+        "GNA (Prumo Logística, BP, Siemens Energy)"
+      ],
+      "fundingSources": [
+        "Private Investment",
+        "Development Banks"
+      ],
+      "projectValue": "US$10 billion (long-term estimated)",
+      "capacityMW": 3000,
+      "mpEngagementWindow": "Early studies and licensing are active. Major procurement for offshore wind turbines, electrolysis plants, and associated HV offshore/onshore substations, transformers, and transmission infrastructure is expected from late 2025 onwards. Significant technical due diligence, FAT, and QAQC opportunities.",
+      "mpServices": [
+        "Technical Due Diligence",
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing"
+      ],
+      "priority": "Low",
+      "sourceUrl": "https://www.gna.com.br/en/integrated-solution/green-hydrogen/",
+      "summary": "GNA is developing a large-scale integrated offshore wind and green hydrogen project at Porto do Açu. This ambitious project is in early planning but will involve substantial HV infrastructure for generation, transmission, and connection to the industrial complex."
+    },
+    {
+      "projectName": "Complexo Eólico Cajuína Phase 2",
+      "location": "Rio Grande do Norte",
+      "country": "Brazil",
+      "procurementStart": "Q1 2024",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "Wind",
+        "Substation"
+      ],
+      "companies": [
+        "Equinor",
+        "Rio Energy"
+      ],
+      "fundingSources": [
+        "Equinor",
+        "Rio Energy"
+      ],
+      "projectValue": "US$500 million (estimated)",
+      "capacityMW": 300,
+      "mpEngagementWindow": "Ongoing procurement for wind turbine components, balance of plant, and HV grid connection assets (transformers, switchgear for new substations). QAQC and FAT services throughout 2024-2025 for new phases.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://www.abeeolica.org.br/noticias/equinor-e-rio-energy-avancam-com-complexo-eolico-cajuina-no-rn/",
+      "summary": "Expansion of the Cajuína wind complex, with new phases under construction. This involves the installation of additional wind turbines and the expansion of the existing substation and grid connection infrastructure, requiring ongoing HV equipment procurement and inspection."
+    },
+    {
+      "projectName": "ANEEL Transmission Auction 01/2023 - Lot 9 (Miracema LT)",
+      "location": "Tocantins",
+      "country": "Brazil",
+      "procurementStart": "Q4 2023",
+      "procurementStatus": "Awarded",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation"
+      ],
+      "companies": [
+        "Elecnor"
+      ],
+      "fundingSources": [
+        "Elecnor"
+      ],
+      "projectValue": "R$400 million (estimated)",
+      "capacityMW": 0,
+      "mpEngagementWindow": "Detailed engineering and procurement for a new 500kV substation and 230kV transmission lines. Active opportunities for FAT and QAQC of HV transformers, circuit breakers, GIS, and other substation components through 2024-2026.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://www.aneel.gov.br/sala-de-imprensa/-/asset_publisher/9xQ1qS9f0zV3/content/aneel-realiza-leilao-de-transmissao-com-r-15-7-bilhoes-em-investimentos-previstos/656877?inheritRedirect=false&redirect=https%3A%2F%2Fwww.aneel.gov.br%2Fsala-de-imprensa%3Fp_p_id%3D101_INSTANCE_9xQ1qS9f0zV3%26p_p_lifecycle%3D0%26p_p_state%3Dnormal%26p_p_mode%3Dview%26_101_INSTANCE_9xQ1qS9f0zV3_delta%3D20%26p_p_col_id%3Dcolumn-2%26p_p_col_pos%3D1%26p_p_col_count%3D4",
+      "summary": "Awarded in ANEEL's 01/2023 transmission auction, this lot involves significant new transmission infrastructure, including a 500kV substation and 230kV lines in Tocantins. Procurement of high-value HV equipment is now in full swing."
+    },
+    {
+      "projectName": "ANEEL Transmission Auction 01/2023 - Lot 10 (João Câmara III LT)",
+      "location": "Rio Grande do Norte",
+      "country": "Brazil",
+      "procurementStart": "Q4 2023",
+      "procurementStatus": "Awarded",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation"
+      ],
+      "companies": [
+        "Elecnor"
+      ],
+      "fundingSources": [
+        "Elecnor"
+      ],
+      "projectValue": "R$550 million (estimated)",
+      "capacityMW": 0,
+      "mpEngagementWindow": "Detailed engineering and procurement for a new 500kV substation and a 500kV transmission line. Active opportunities for FAT and QAQC of HV transformers, circuit breakers, GIS, and other substation components through 2024-2026.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://www.aneel.gov.br/sala-de-imprensa/-/asset_publisher/9xQ1qS9f0zV3/content/aneel-realiza-leilao-de-transmissao-com-r-15-7-bilhoes-em-investimentos-previstos/656877?inheritRedirect=false&redirect=https%3A%2F%2Fwww.aneel.gov.br%2Fsala-de-imprensa%3Fp_p_id%3D101_INSTANCE_9xQ1qS9f0zV3%26p_p_lifecycle%3D0%26p_p_state%3Dnormal%26p_p_mode%3Dview%26_101_INSTANCE_9xQ1qS9f0zV3_delta%3D20%26p_p_col_id%3Dcolumn-2%26p_p_col_pos%3D1%26p_p_col_count%3D4",
+      "summary": "Also awarded in ANEEL's 01/2023 transmission auction, this lot includes the construction of a new 500kV substation and a 500kV transmission line. Procurement for high-value HV equipment is actively underway for this critical grid reinforcement project."
+    },
+    {
+      "projectName": "Omega Energia - Assuruá IV Wind Complex",
+      "location": "Xique-Xique, Bahia",
+      "country": "Brazil",
+      "procurementStart": "Q3 2023",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "Wind",
+        "Substation"
+      ],
+      "companies": [
+        "Omega Energia"
+      ],
+      "fundingSources": [
+        "BNDES",
+        "Commercial Banks"
+      ],
+      "projectValue": "R$2.5 billion",
+      "capacityMW": 460,
+      "mpEngagementWindow": "Ongoing procurement for new wind turbines, balance of plant, and significant expansion/upgrade of HV substations and grid connection. QAQC and FAT services will be required for transformers, switchgear, and associated electrical equipment throughout 2024-2025.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://www.abeeolica.org.br/noticias/omega-energia-inicia-construcao-do-complexo-eolico-assurua-iv-na-bahia/",
+      "summary": "Omega Energia is expanding its Assuruá wind complex with Assuruá IV. This large-scale project involves the installation of many new wind turbines and the necessary expansion of HV grid connection points, with active procurement and installation for specialized electrical components."
+    },
+    {
+      "projectName": "EDP Renováveis - São Guto Wind Farm",
+      "location": "Rio Grande do Norte",
+      "country": "Brazil",
+      "procurementStart": "Q4 2023",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "Wind",
+        "Substation"
+      ],
+      "companies": [
+        "EDP Renováveis"
+      ],
+      "fundingSources": [
+        "EDP Renováveis",
+        "BNDES"
+      ],
+      "projectValue": "R$1.5 billion (estimated)",
+      "capacityMW": 200,
+      "mpEngagementWindow": "Construction started in late 2023, indicating ongoing procurement for wind turbine components, electrical infrastructure, and HV connection equipment (transformers, switchgear). QAQC and FAT services will be active through 2024-2025.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "High",
+      "sourceUrl": "https://www.edprenovaveis.com/br/sala-de-imprensa/noticias/edpr-inicia-construcao-de-mais-um-parque-eolico-no-rn/",
+      "summary": "EDP Renováveis commenced construction of its São Guto wind farm in late 2023. This project involves a new wind generation facility and the associated HV grid connection, with active procurement of specialized electrical and mechanical components."
+    },
+    {
+      "projectName": "Sol do Sertão Solar Complex Expansion",
+      "location": "Piauí",
+      "country": "Brazil",
+      "procurementStart": "Q1 2024",
+      "procurementStatus": "Under Construction",
+      "assetTypes": [
+        "Solar PV",
+        "Substation"
+      ],
+      "companies": [
+        "EDF Renewables"
+      ],
+      "fundingSources": [
+        "EDF Renewables",
+        "BNDES"
+      ],
+      "projectValue": "R$800 million (estimated)",
+      "capacityMW": 200,
+      "mpEngagementWindow": "Expansion construction is underway, requiring procurement for additional solar modules, inverters, and especially HV step-up transformers and switchgear for the grid connection. QAQC and FAT opportunities in 2024-2025.",
+      "mpServices": [
+        "QAQC Inspection",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "Medium",
+      "sourceUrl": "https://www.absolar.org.br/noticia/edf-renovaveis-inicia-obras-de-expansao-do-complexo-solar-sol-do-sertao-no-piaui/",
+      "summary": "EDF Renewables is expanding its Sol do Sertão solar complex, adding significant new capacity. This involves extending the existing plant and upgrading/expanding the HV substation facilities, with procurement activities for electrical components ongoing."
+    },
+    {
+      "projectName": "Neoen / Alinta Energy - Northern Goldfields REZ & Storage",
+      "location": "Northern Goldfields, Western Australia",
+      "country": "Australia",
+      "procurementStart": "Q3 2024 (expected)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "Solar PV",
+        "Wind",
+        "BESS",
+        "HV Transmission",
+        "REZ"
+      ],
+      "companies": [
+        "Neoen",
+        "Alinta Energy"
+      ],
+      "fundingSources": [
+        "Private Investment"
+      ],
+      "projectValue": "A$3 billion+",
+      "capacityMW": 1000,
+      "mpEngagementWindow": "Early planning and feasibility studies are ongoing. Major tenders for renewable generation, BESS, and new HV transmission lines and substations are anticipated from late 2025. Technical due diligence and early QAQC consulting opportunities.",
+      "mpServices": [
+        "Technical Due Diligence",
+        "QAQC Inspection",
+        "Vendor Assessment"
+      ],
+      "priority": "Low",
+      "sourceUrl": "https://reneweconomy.com.au/alinta-energy-neoen-join-forces-to-unleash-huge-northern-goldfields-renewable-energy-zone/",
+      "summary": "A partnership aiming to develop a massive renewable energy zone including solar, wind, and battery storage to power mining operations and potentially the wider WA grid. The project is in early stages but has significant potential for large-scale HV infrastructure."
+    },
+    {
+      "projectName": "Western Green Energy Hub",
+      "location": "Esperance-Eucla, Western Australia",
+      "country": "Australia",
+      "procurementStart": "Q1 2026 (expected)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "Hydrogen",
+        "Wind",
+        "Solar PV",
+        "HV Transmission"
+      ],
+      "companies": [
+        "InterContinental Energy",
+        "CWP Global",
+        "Mirning Green Energy Limited"
+      ],
+      "fundingSources": [
+        "Private Investment"
+      ],
+      "projectValue": "A$100 billion (long-term estimated)",
+      "capacityMW": 50000,
+      "mpEngagementWindow": "Very early stage, but due to massive scale, early technical due diligence and conceptual QAQC planning for internal HV transmission infrastructure would be relevant in the 3-5 year horizon. Initial pilot projects may proceed earlier.",
+      "mpServices": [
+        "Technical Due Diligence",
+        "Asset Management"
+      ],
+      "priority": "Low",
+      "sourceUrl": "https://westerngreenenergyhub.com/",
+      "summary": "One of the world's largest proposed green hydrogen and ammonia production hubs, powered by 50GW of wind and solar. While full development is decades long, early-stage studies and potential pilot projects might offer initial engagement for MadePartners."
+    },
+    {
+      "projectName": "EPE Planning - New Transmission Lines (2024-2028 projects)",
+      "location": "Various states, Brazil",
+      "country": "Brazil",
+      "procurementStart": "Q4 2024 (expected for next auctions)",
+      "procurementStatus": "Planning",
+      "assetTypes": [
+        "HV Transmission",
+        "Substation"
+      ],
+      "companies": [
+        "EPE (Energy Planning Company)"
+      ],
+      "fundingSources": [
+        "Brazilian Government (via ANEEL auctions)"
+      ],
+      "projectValue": "R$20 billion+ (across multiple projects)",
+      "capacityMW": 0,
+      "mpEngagementWindow": "EPE's planning documents identify numerous new HV transmission lines and substations for future ANEEL auctions. Tenders for these projects will open from late 2024 onwards, leading to significant FAT and QAQC needs for HV transformers, circuit breakers, and line components from 2025.",
+      "mpServices": [
+        "Technical Due Diligence",
+        "QAQC Inspection",
+        "Vendor Assessment",
+        "Factory Acceptance Testing",
+        "Site Supervision"
+      ],
+      "priority": "Medium",
+      "sourceUrl": "https://www.epe.gov.br/pt/publicacoes-dados-e-informacoes/publicacoes/plano-decenal-de-expansao-de-energia",
+      "summary": "EPE regularly publishes its Ten-Year Energy Expansion Plan (PDE), outlining the need for new generation and transmission. The new transmission lines identified for the 2024-2028 period represent upcoming major project tenders for HV equipment."
+    }
+  ],
+  "lastScan": "2024-07-29"
+}
