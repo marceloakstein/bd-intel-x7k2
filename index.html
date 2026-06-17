@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MP Renewable Energy Intelligence</title>
+</head>
+<body style="margin:0;padding:0;background:#000;">
+<!-- 
+  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build
+  Read-only. Fetches projects.json from the SAME repo (same origin, no auth).
+  React via CDN, no build step. Served at https://marceloakstein.github.io/bd-intel-x7k2/
+-->
+<div id="mp-root">Loading dashboard…</div>
+
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
+// ─── Data source: same GitHub repo (same origin, public, no auth) ────────────
+const PROJECTS_URL = "projects.json";
+const LASTSCAN_URL = "last-scan.json";
+
+const C = {
+  yellow: "#FDB422", black: "#000000", white: "#FFFFFF",
+  card: "#0d0d0d", border: "#1e1e1e", muted: "#444444",
+  newColor: "#4ADE80", updatedColor: "#38BDF8",
+};
+
+function hasHVEquipment(p) {
+  const hay = [...(p.assetTypes||[]), p.summary||"", p.mpEngagementWindow||"", ...(p.mpServices||[])].join(" ").toLowerCase();
+  return /transformer|circuit breaker|circuit-breaker|switchgear|gis\b|substation|hv transmission|high.?voltage|\bhv\b|grid connection|converter station/.test(hay);
+}
+
+function Badge({ text, type }) {
+  const map = {
+    priority_High:{bg:C.yellow,color:C.black,border:"none"},
+    priority_Medium:{bg:"#1c1c00",color:C.yellow,border:"1px solid "+C.yellow},
+    priority_Low:{bg:"#151515",color:"#555",border:"1px solid #2a2a2a"},
+    status_PreTender:{bg:"#0c200c",color:"#5cb85c",border:"1px solid #5cb85c"},
+    status_TenderActive:{bg:C.yellow,color:C.black,border:"none"},
+    status_Awarded:{bg:"#0c0c25",color:"#6699ff",border:"1px solid #6699ff"},
+    status_UnderConstruction:{bg:"#200e00",color:"#ff9940",border:"1px solid #ff9940"},
+    status_Planning:{bg:"#151515",color:"#666",border:"1px solid #2a2a2a"},
+  };
+  const key = type+"_"+(text||"").replace(/[\s\-\/]/g,"");
+  const s = map[key] || {bg:"#1a1a1a",color:"#666",border:"1px solid #2a2a2a"};
+  return <span style={{background:s.bg,color:s.color,border:s.border,padding:"2px 8px",fontSize:"10px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>{text}</span>;
+}
+function HVBadge() {
+  return <span title="HV transformers / circuit breakers — MP core experience" style={{background:"#2a1500",color:C.yellow,border:"1px solid "+C.yellow,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>⚡ HV EQUIP</span>;
+}
+const Flag = ({country}) => <span style={{fontSize:"14px",lineHeight:1}}>{country==="Australia"?"🇦🇺":country==="Brazil"?"🇧🇷":"🌐"}</span>;
+function StatCard({value,label,accent,color}) {
+  return <div><div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"30px",color:color||(accent?C.yellow:C.white),lineHeight:1}}>{value}</div><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",marginTop:"4px"}}>{label}</div></div>;
+}
+const SectionLabel = ({children}) => <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.yellow,textTransform:"uppercase",letterSpacing:"1.5px",fontWeight:"bold",marginBottom:"6px",borderBottom:"1px solid "+C.border,paddingBottom:"5px"}}>{children}</div>;
+
+function DetailPanel({project:p,onClose}) {
+  if (!p) return null;
+  const rows = [
+    {label:"Summary",val:p.summary},
+    {label:"Asset Types",val:(p.assetTypes||[]).join(", ")},
+    {label:"All Companies",val:(p.companies||[]).join(", ")},
+    {label:"Funding Sources",val:(p.fundingSources||[]).join(", ")},
+    {label:"MP Services",val:(p.mpServices||[]).join(", ")},
+    {label:"LinkedIn — Targets",val:(p.linkedinContacts||[]).join(", ")},
+  ];
+  return (
+    <div style={{background:"#050505",borderTop:"3px solid "+C.yellow,marginTop:"16px"}}>
+      <div style={{background:C.yellow,padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"12px",flexWrap:"wrap"}}>
+          <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"12px",textTransform:"uppercase",letterSpacing:"1.5px",color:C.black}}>PROJECT DETAIL — {(p.projectName||"").toUpperCase()}</div>
+          {hasHVEquipment(p) && <HVBadge/>}
+        </div>
+        <button onClick={onClose} style={{background:"none",border:"none",color:C.black,fontSize:"18px",cursor:"pointer",lineHeight:1,padding:"0 4px"}}>✕</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
+        <div style={{padding:"20px",borderRight:"1px solid "+C.border}}>
+          <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"16px"}}>
+            <Flag country={p.country}/><Badge text={p.priority} type="priority"/><Badge text={p.procurementStatus} type="status"/>
+          </div>
+          <div style={{background:C.card,borderLeft:"3px solid "+C.yellow,padding:"12px 14px",marginBottom:"16px"}}>
+            <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"6px"}}>⚡ MP ENGAGEMENT WINDOW</div>
+            <div style={{color:C.white,fontFamily:"Arial,sans-serif",fontSize:"13px",fontWeight:"bold"}}>{p.mpEngagementWindow||"Review procurement timeline"}</div>
+            <div style={{color:C.muted,fontFamily:"Arial,sans-serif",fontSize:"11px",marginTop:"4px"}}>Procurement start: {p.procurementStart||"TBD"}</div>
+          </div>
+          <div style={{marginBottom:"14px"}}>
+            <SectionLabel>Location & Scale</SectionLabel>
+            <div style={{color:"#aaa",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>
+              {p.location}
+              {p.capacityMW?<span style={{color:C.yellow,fontWeight:"bold"}}> · {Number(p.capacityMW).toLocaleString()} MW</span>:""}
+              {p.projectValue?<span style={{color:"#777"}}> · {p.projectValue}</span>:""}
+            </div>
+          </div>
+          {(p.mpServices||[]).length>0 && (
+            <div><SectionLabel>MadePartners Services</SectionLabel>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"6px"}}>
+                {p.mpServices.map((s,i)=><span key={i} style={{border:"1px solid "+C.yellow,color:C.yellow,fontSize:"10px",padding:"3px 8px",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.5px"}}>{s}</span>)}
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{padding:"20px"}}>
+          {rows.filter(r=>r.val).map(({label,val})=>(
+            <div key={label} style={{marginBottom:"14px"}}>
+              <SectionLabel>{label}</SectionLabel>
+              <div style={{color:"#bbb",fontFamily:"Arial,sans-serif",fontSize:"12px",lineHeight:"1.7"}}>{val}</div>
+            </div>
+          ))}
+          {p.sourceUrl && <div style={{marginTop:"8px"}}><a href={p.sourceUrl} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>→ View source article</a></div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [projects,setProjects] = useState([]);
+  const [lastScan,setLastScan] = useState(null);
+  const [loading,setLoading]   = useState(true);
+  const [error,setError]       = useState("");
+  const [selected,setSelected] = useState(null);
+  const [fCountry,setFCountry] = useState("All");
+  const [fPriority,setFPriority] = useState("All");
+  const [fStatus,setFStatus]   = useState("All");
+  const [fHV,setFHV]           = useState(false);
+  const [sortKey,setSortKey]   = useState("priority");
+  const [sortDir,setSortDir]   = useState("asc");
+
+  useEffect(()=>{
+    (async()=>{
+      try {
+        const r = await fetch(PROJECTS_URL, {headers:{"Accept":"application/json"}});
+        if (!r.ok) throw new Error("Could not load projects.json (HTTP "+r.status+"). Make sure the file exists in the repo.");
+        const d = await r.json();
+        setProjects(d.projects || []);
+        if (d.lastScan) setLastScan(d.lastScan);
+      } catch(e){ setError(e.message); }
+      try {
+        const r2 = await fetch(LASTSCAN_URL, {headers:{"Accept":"application/json"}});
+        if (r2.ok){ const d2 = await r2.json(); if (d2.lastScan) setLastScan(d2.lastScan); }
+      } catch(_){}
+      setLoading(false);
+    })();
+  },[]);
+
+  const order = {High:0,Medium:1,Low:2};
+  const displayed = projects
+    .filter(p=>fCountry==="All"||p.country===fCountry)
+    .filter(p=>fPriority==="All"||p.priority===fPriority)
+    .filter(p=>fStatus==="All"||p.procurementStatus===fStatus)
+    .filter(p=>!fHV||hasHVEquipment(p))
+    .sort((a,b)=>{
+      if (sortKey==="priority"){
+        const av=order[a.priority]??2,bv=order[b.priority]??2;
+        if(av!==bv) return sortDir==="asc"?av-bv:bv-av;
+        return (hasHVEquipment(a)?0:1)-(hasHVEquipment(b)?0:1);
+      }
+      let av,bv;
+      if(sortKey==="capacityMW"){av=Number(a.capacityMW)||0;bv=Number(b.capacityMW)||0;}
+      else{av=String(a[sortKey]||"");bv=String(b[sortKey]||"");}
+      if(av<bv) return sortDir==="asc"?-1:1;
+      if(av>bv) return sortDir==="asc"?1:-1;
+      return 0;
+    });
+
+  function toggleSort(k){ if(sortKey===k) setSortDir(d=>d==="asc"?"desc":"asc"); else {setSortKey(k);setSortDir("asc");} }
+  const fmt = iso => iso ? new Date(iso).toLocaleString("en-AU",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "Unknown";
+  const TD = (e={}) => ({padding:"9px 12px",fontFamily:"Arial,sans-serif",fontSize:"12px",borderBottom:"1px solid "+C.border,...e});
+  const ColHead = ({label,k,style={}}) => (
+    <th onClick={()=>toggleSort(k)} style={{padding:"10px 12px",textAlign:"left",background:C.yellow,color:C.black,fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap",cursor:"pointer",userSelect:"none",fontFamily:"Arial,sans-serif",...style}}>
+      {label}<span style={{marginLeft:"4px",color:sortKey===k?C.black:"#a88000"}}>{sortKey===k?(sortDir==="asc"?"▲":"▼"):"⇅"}</span>
+    </th>
+  );
+
+  const auCount = projects.filter(p=>p.country==="Australia").length;
+  const brCount = projects.filter(p=>p.country==="Brazil").length;
+  const highCount = projects.filter(p=>p.priority==="High").length;
+  const hvCount = projects.filter(hasHVEquipment).length;
+  const activeCount = projects.filter(p=>p.procurementStatus==="Tender Active").length;
+
+  return (
+    <div style={{background:C.black,minHeight:"100vh",color:C.white,fontFamily:"Arial,sans-serif"}}>
+      <div style={{background:C.black,borderBottom:"3px solid "+C.yellow,padding:"18px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"16px"}}>
+        <div>
+          <div style={{display:"flex",alignItems:"baseline"}}>
+            <span style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:900,fontSize:"28px",color:C.yellow,letterSpacing:"5px"}}>MADE</span>
+            <span style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:900,fontSize:"28px",color:C.white,letterSpacing:"4px"}}>PARTNERS</span>
+          </div>
+          <div style={{color:"#3a3a3a",fontFamily:"Arial,sans-serif",fontSize:"10px",letterSpacing:"3.5px",textTransform:"uppercase",marginTop:"4px"}}>RENEWABLE ENERGY MARKET INTELLIGENCE · AUSTRALIA & BRAZIL</div>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"1px"}}>Auto-updated weekly · Sundays</div>
+          <div style={{color:"#2e2e2e",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:"#555"}}>{fmt(lastScan)}</span></div>
+        </div>
+      </div>
+
+      {loading && <div style={{padding:"60px 28px",textAlign:"center",color:C.yellow,fontFamily:"'Courier New',monospace",fontSize:"13px"}}>Loading intelligence data…</div>}
+      {error && <div style={{padding:"20px 28px",color:"#e05050",fontFamily:"'Courier New',monospace",fontSize:"12px",background:"#1a0808",borderBottom:"1px solid "+C.border}}>⚠ {error}</div>}
+
+      {!loading && (
+        <div style={{background:"#060606",padding:"18px 28px",display:"flex",gap:"40px",flexWrap:"wrap",borderBottom:"1px solid "+C.border}}>
+          <StatCard value={projects.length} label="Total Projects" accent/>
+          <StatCard value={auCount+" 🇦🇺"} label="Australia"/>
+          <StatCard value={brCount+" 🇧🇷"} label="Brazil"/>
+          <StatCard value={"⚡ "+hvCount} label="HV Equip" accent/>
+          <StatCard value={highCount} label="High Priority"/>
+          <StatCard value={activeCount} label="Active Tenders"/>
+        </div>
+      )}
+
+      {!loading && (
+        <div style={{background:"#060606",padding:"10px 28px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
+          {[
+            {val:fCountry,set:setFCountry,opts:["All","Australia","Brazil"],ph:"ALL COUNTRIES"},
+            {val:fPriority,set:setFPriority,opts:["All","High","Medium","Low"],ph:"ALL PRIORITIES"},
+            {val:fStatus,set:setFStatus,opts:["All","Pre-tender","Tender Active","Awarded","Under Construction","Planning"],ph:"ALL STATUSES"},
+          ].map((f,i)=>(
+            <select key={i} value={f.val} onChange={e=>f.set(e.target.value)} style={{background:"#0d0d0d",color:"#666",border:"1px solid "+C.border,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
+              {f.opts.map(o=><option key={o} value={o}>{o==="All"?f.ph:o.toUpperCase()}</option>)}
+            </select>
+          ))}
+          <button onClick={()=>setFHV(v=>!v)} style={{background:fHV?C.yellow:"#0d0d0d",color:fHV?C.black:"#666",border:"1px solid "+(fHV?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHV?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚡ HV EQUIP ONLY</button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div style={{padding:"24px 28px"}}>
+          {projects.length===0 ? (
+            <div style={{textAlign:"center",padding:"100px 20px",color:"#2a2a2a",fontFamily:"Arial,sans-serif"}}>No project data found in the source file yet.</div>
+          ) : (
+            <div>
+              <div style={{color:"#333",fontFamily:"Arial,sans-serif",fontSize:"11px",marginBottom:"12px",display:"flex",gap:"16px",flexWrap:"wrap"}}>
+                <span>Showing {displayed.length} of {projects.length} projects — click a row for details</span>
+                <span style={{color:C.yellow}}>⚡ HV equip (MP core)</span>
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1000px"}}>
+                  <thead><tr>
+                    <ColHead label="Project Name" k="projectName"/>
+                    <ColHead label="Location" k="location"/>
+                    <ColHead label="Procurement" k="procurementStart" style={{width:"100px"}}/>
+                    <ColHead label="Status" k="procurementStatus" style={{width:"130px"}}/>
+                    <ColHead label="MW" k="capacityMW"/>
+                    <ColHead label="Key Assets" k="assetTypes"/>
+                    <ColHead label="Companies" k="companies"/>
+                    <ColHead label="Engage By" k="mpEngagementWindow"/>
+                    <ColHead label="Priority" k="priority"/>
+                  </tr></thead>
+                  <tbody>
+                    {displayed.map((p,i)=>{
+                      const sel = selected && selected.projectName===p.projectName;
+                      return (
+                        <tr key={i} onClick={()=>setSelected(sel?null:p)} style={{background:sel?"#1a1200":i%2===0?"#070707":C.card,cursor:"pointer",borderLeft:sel?"3px solid "+C.yellow:hasHVEquipment(p)?"3px solid "+C.yellow:"3px solid transparent"}}>
+                          <td style={TD({color:C.white,fontWeight:"bold",minWidth:"200px"})}>
+                            <div style={{display:"flex",alignItems:"center",gap:"7px",flexWrap:"wrap"}}>
+                              <Flag country={p.country}/><span>{p.projectName}</span>{hasHVEquipment(p)&&<HVBadge/>}
+                            </div>
+                          </td>
+                          <td style={TD({color:"#777",fontSize:"11px"})}>{p.location}</td>
+                          <td style={TD({color:C.yellow,fontWeight:"bold",whiteSpace:"nowrap",padding:"9px 8px"})}>{p.procurementStart||"TBD"}</td>
+                          <td style={TD({whiteSpace:"nowrap"})}><Badge text={p.procurementStatus} type="status"/></td>
+                          <td style={TD({color:C.yellow,whiteSpace:"nowrap",textAlign:"right",fontWeight:"bold"})}>{p.capacityMW?Number(p.capacityMW).toLocaleString():"—"}</td>
+                          <td style={TD({color:"#888",fontSize:"11px"})}>{(p.assetTypes||[]).join(", ")}</td>
+                          <td style={TD({color:"#777",fontSize:"11px"})}>{(p.companies||[]).slice(0,2).join(", ")}{(p.companies||[]).length>2?" +"+(p.companies.length-2):""}</td>
+                          <td style={TD({color:"#bbb",fontWeight:"bold",fontSize:"11px",minWidth:"260px"})}>{p.mpEngagementWindow||"—"}</td>
+                          <td style={TD({whiteSpace:"nowrap"})}><Badge text={p.priority} type="priority"/></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {selected && <DetailPanel project={selected} onClose={()=>setSelected(null)}/>}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{borderTop:"1px solid "+C.border,padding:"14px 28px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+        <span style={{color:"#222"}}>Commercial in Confidence · MADEPARTNERS Quality Solutions · ISO 9001 / 14001 / 45001</span>
+        <span style={{color:C.yellow,letterSpacing:"1px"}}>WWW.MADEPARTNERS.COM</span>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("mp-root")).render(<App/>);
+</script>
+</body>
+</html>
