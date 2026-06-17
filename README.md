@@ -1,0 +1,1 @@
+# bd-intel-x7k2
