@@ -94,11 +94,14 @@ const SectionLabel=({children})=><div style={{fontFamily:"Arial,sans-serif",font
 
 function DetailPanel({project:p,onClose,onPinToggle}){
   if(!p)return null;
+  const fmtCo=(v)=>Array.isArray(v)?v.filter(Boolean).join(", "):(v||"");
   const rows=[
     {label:"Summary",val:p.summary},
     {label:"Asset Types",val:(p.assetTypes||[]).join(", ")},
-    {label:"All Companies",val:(p.companies||[]).join(", ")},
-    {label:"Funding Sources",val:(p.fundingSources||[]).join(", ")},
+    {label:"Owner / Developer",val:fmtCo(p.owner)},
+    {label:"EPC Contractor",val:fmtCo(p.epcContractor)},
+    {label:"Financiers / Lenders",val:fmtCo(p.financiers||p.fundingSources)},
+    {label:"All Companies",val:(!p.owner&&!p.epcContractor&&!p.financiers)?fmtCo(p.companies):""},
     {label:"MP Services",val:(p.mpServices||[]).join(", ")},
   ];
   return (
@@ -337,6 +340,12 @@ function App(){
   };
   const TD=(e={})=>({padding:"9px 12px",fontFamily:"Arial,sans-serif",fontSize:"12px",borderBottom:"1px solid "+C.border,...e});
   const hl=(p,f,e={})=>(p._changedFields||[]).includes(f)?{...e,color:C.updatedColor}:e;
+  // Render a company field that may be a string, array, or missing
+  const coList=(v)=>{
+    if(!v)return "";
+    if(Array.isArray(v))return v.filter(Boolean).join(", ");
+    return String(v);
+  };
   const ColHead=({label,k,style={}})=>(
     <th onClick={()=>toggleSort(k)} style={{padding:"10px 12px",textAlign:"left",background:C.yellow,color:C.black,fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap",cursor:"pointer",userSelect:"none",fontFamily:"Arial,sans-serif",...style}}>
       {label}<span style={{marginLeft:"4px",color:sortKey===k?C.black:"#a88000"}}>{sortKey===k?(sortDir==="asc"?"▲":"▼"):"⇅"}</span>
@@ -439,7 +448,7 @@ function App(){
                 <span style={{color:C.updatedColor}}>↻ updated</span>
               </div>
               <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1100px"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1300px"}}>
                   <thead><tr>
                     <ColHead label="Project Name" k="projectName"/>
                     <ColHead label="Location" k="location"/>
@@ -447,7 +456,9 @@ function App(){
                     <ColHead label="Status" k="procurementStatus" style={{width:"130px"}}/>
                     <ColHead label="MW" k="capacityMW"/>
                     <ColHead label="Key Assets" k="assetTypes"/>
-                    <ColHead label="Companies" k="companies"/>
+                    <ColHead label="Owner / Developer" k="owner"/>
+                    <ColHead label="EPC Contractor" k="epcContractor"/>
+                    <ColHead label="Financiers / Lenders" k="financiers"/>
                     <ColHead label="Engage By" k="mpEngagementWindow"/>
                     <ColHead label="Priority" k="priority"/>
                   </tr></thead>
@@ -469,7 +480,9 @@ function App(){
                           <td onClick={open} style={TD(hl(p,"procurementStatus",{width:"160px"}))}><Badge text={p.procurementStatus} type="status"/></td>
                           <td onClick={open} style={TD(hl(p,"capacityMW",{color:C.yellow,whiteSpace:"nowrap",textAlign:"right",fontWeight:"bold"}))}>{p.capacityMW?Number(p.capacityMW).toLocaleString():"—"}</td>
                           <td onClick={open} style={TD({color:"#888",fontSize:"11px"})}>{(p.assetTypes||[]).join(", ")}</td>
-                          <td onClick={open} style={TD({color:"#777",fontSize:"11px"})}>{(p.companies||[]).slice(0,2).join(", ")}{(p.companies||[]).length>2?" +"+(p.companies.length-2):""}</td>
+                          <td onClick={open} style={TD({color:"#aaa",fontSize:"11px",minWidth:"120px"})}>{coList(p.owner)||(p.owner)|| (p.companies&&!p.epcContractor&&!p.financiers?coList(p.companies):"")||"—"}</td>
+                          <td onClick={open} style={TD({color:"#999",fontSize:"11px",minWidth:"120px"})}>{coList(p.epcContractor)||"—"}</td>
+                          <td onClick={open} style={TD({color:"#888",fontSize:"11px",minWidth:"120px"})}>{coList(p.financiers||p.fundingSources)||"—"}</td>
                           <td onClick={open} style={TD(hl(p,"mpEngagementWindow",{color:"#bbb",fontWeight:"bold",fontSize:"11px",minWidth:"260px"}))}>{p.mpEngagementWindow||"—"}</td>
                           <td onClick={open} style={TD(hl(p,"priority",{whiteSpace:"nowrap"}))}><Badge text={p.priority} type="priority"/></td>
                         </tr>
