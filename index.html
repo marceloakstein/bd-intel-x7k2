@@ -448,7 +448,7 @@ function App(){
                 <span style={{color:C.updatedColor}}>↻ updated</span>
               </div>
               <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1300px"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1180px",tableLayout:"auto"}}>
                   <thead><tr>
                     <ColHead label="Project Name" k="projectName"/>
                     <ColHead label="Location" k="location"/>
@@ -459,7 +459,7 @@ function App(){
                     <ColHead label="Owner / Developer" k="owner"/>
                     <ColHead label="EPC Contractor" k="epcContractor"/>
                     <ColHead label="Financiers / Lenders" k="financiers"/>
-                    <ColHead label="Engage By" k="mpEngagementWindow"/>
+                    <ColHead label="Engage By" k="mpEngagementWindow" style={{width:"170px"}}/>
                     <ColHead label="Priority" k="priority"/>
                   </tr></thead>
                   <tbody>
@@ -483,7 +483,7 @@ function App(){
                           <td onClick={open} style={TD({color:"#aaa",fontSize:"11px",minWidth:"120px"})}>{coList(p.owner)||(p.owner)|| (p.companies&&!p.epcContractor&&!p.financiers?coList(p.companies):"")||"—"}</td>
                           <td onClick={open} style={TD({color:"#999",fontSize:"11px",minWidth:"120px"})}>{coList(p.epcContractor)||"—"}</td>
                           <td onClick={open} style={TD({color:"#888",fontSize:"11px",minWidth:"120px"})}>{coList(p.financiers||p.fundingSources)||"—"}</td>
-                          <td onClick={open} style={TD(hl(p,"mpEngagementWindow",{color:"#bbb",fontWeight:"bold",fontSize:"11px",minWidth:"260px"}))}>{p.mpEngagementWindow||"—"}</td>
+                          <td onClick={open} style={TD(hl(p,"mpEngagementWindow",{color:"#bbb",fontWeight:"bold",fontSize:"11px",width:"170px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3}))}>{p.mpEngagementWindow||"—"}</td>
                           <td onClick={open} style={TD(hl(p,"priority",{whiteSpace:"nowrap"}))}><Badge text={p.priority} type="priority"/></td>
                         </tr>
                       );
