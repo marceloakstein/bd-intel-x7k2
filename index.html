@@ -1,193 +1,526 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>MP Renewable Energy Intelligence</title>
-</head>
-<body style="margin:0;padding:0;background:#000;">
-<!--
-  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (full display features)
-  Read-only. Fetches projects.json + projects-prev.json from the SAME repo (same origin, no auth).
-  Change highlighting diffs current vs previous. Pins stored per-viewer in localStorage.
-  Live at https://marceloakstein.github.io/bd-intel-x7k2/
--->
-<div id="mp-root">Loading dashboard…</div>
-
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-
-<script type="text/babel" data-presets="react">
-const { useState, useEffect } = React;
-
-const PROJECTS_URL = "projects.json";
-const PREV_URL     = "projects-prev.json";
-const LASTSCAN_URL = "last-scan.json";
-const PIN_KEY      = "mp-pins-v1";
+import { useState, useEffect } from "react";
 
 const C = {
-  yellow:"#FDB422", black:"#000000", white:"#FFFFFF",
-  card:"#0d0d0d", border:"#1e1e1e", muted:"#444444",
-  newColor:"#4ADE80", updatedColor:"#38BDF8",
+  yellow: "#FDB422", black: "#000000", white: "#FFFFFF",
+  grey: "#E5E4E5", surface: "#080808", card: "#0d0d0d",
+  mid: "#111111", border: "#1e1e1e", muted: "#444444",
+  newColor: "#4ADE80", updatedColor: "#38BDF8",
 };
 
-function hasHVEquipment(p){
-  const hay=[...(p.assetTypes||[]),p.summary||"",p.mpEngagementWindow||"",...(p.mpServices||[])].join(" ").toLowerCase();
-  return /transformer|circuit breaker|circuit-breaker|switchgear|gis\b|substation|hv transmission|high.?voltage|\bhv\b|grid connection|converter station/.test(hay);
+const STORAGE_KEY = "mp-regen-intel-v3";
+const PINNED_KEY  = "mp-regen-pinned-v1";
+const DELETED_KEY = "mp-regen-deleted-v1";
+
+const DEFAULT_PINNED = [
+  {
+    projectName: "New England REZ",
+    location: "New England, NSW",
+    country: "Australia",
+    procurementStart: "Q3 2026",
+    procurementStatus: "Pre-tender",
+    assetTypes: ["Wind", "Solar PV", "BESS", "HV Transmission"],
+    companies: ["Energy Co NSW", "Transgrid", "APA Group"],
+    fundingSources: ["NSW Government", "CEFC", "Private Investment"],
+    projectValue: "~AUD 10B+",
+    capacityMW: 8000,
+    linkedinContacts: ["Project Director", "Procurement Manager", "Head of Quality", "EPC Manager"],
+    mpEngagementWindow: "Engage now — REZ infrastructure procurement ramping; connections framework active",
+    mpServices: ["QAQC Inspection", "Vendor Assessment", "Factory Acceptance Testing", "Site Supervision", "Technical Due Diligence"],
+    priority: "High",
+    sourceUrl: "https://www.energyco.nsw.gov.au/new-england-rez",
+    summary: "8 GW renewable energy zone in northern NSW. One of Australia's largest REZ programs with transmission infrastructure, generation, and storage components under active development.",
+    lastUpdated: "Pinned",
+    _pinned: true,
+  },
+];
+
+// ─── Retry helper for transient API errors (429 / 5xx / 529 overloaded) ──────
+async function fetchWithRetry(url, options, { retries = 4, baseDelay = 1500, onRetry } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const resp = await fetch(url, options);
+      if (resp.ok) return resp;
+      if ([429, 500, 502, 503, 529].includes(resp.status) && attempt < retries) {
+        if (onRetry) onRetry(attempt + 1, retries, resp.status);
+        await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+        continue;
+      }
+      return resp;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) {
+        if (onRetry) onRetry(attempt + 1, retries, "network");
+        await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
 }
 
-function computeChangeStatus(cur, prev){
-  const prevMap=new Map((prev||[]).map(p=>[p.projectName.toLowerCase(),p]));
-  const watch=["procurementStatus","procurementStart","priority","capacityMW","mpEngagementWindow","projectValue"];
-  return cur.map(p=>{
-    const pr=prevMap.get((p.projectName||"").toLowerCase());
-    if(!pr) return {...p,_changeStatus:"new",_changedFields:[]};
-    const cf=watch.filter(f=>String(p[f]??"")!==String(pr[f]??""));
-    return {...p,_changeStatus:cf.length?"updated":null,_changedFields:cf};
+// ─── Diff scanned projects against previous scan ─────────────────────────────
+function computeChangeStatus(newProjects, prevProjects) {
+  const prevMap = new Map((prevProjects || []).map(p => [p.projectName.toLowerCase(), p]));
+  const watchFields = ["procurementStatus", "procurementStart", "priority", "capacityMW", "mpEngagementWindow", "projectValue"];
+  return newProjects.map(p => {
+    const prev = prevMap.get(p.projectName.toLowerCase());
+    if (!prev) return { ...p, _changeStatus: "new", _changedFields: [] };
+    const changedFields = watchFields.filter(f => String(p[f] ?? "") !== String(prev[f] ?? ""));
+    return { ...p, _changeStatus: changedFields.length ? "updated" : null, _changedFields: changedFields };
   });
 }
 
-function Badge({text,type}){
-  const map={
-    priority_High:{bg:C.yellow,color:C.black,border:"none"},
-    priority_Medium:{bg:"#1c1c00",color:C.yellow,border:"1px solid "+C.yellow},
-    priority_Low:{bg:"#151515",color:"#555",border:"1px solid #2a2a2a"},
-    status_PreTender:{bg:"#0c200c",color:"#5cb85c",border:"1px solid #5cb85c"},
-    status_TenderActive:{bg:C.yellow,color:C.black,border:"none"},
-    status_Awarded:{bg:"#0c0c25",color:"#6699ff",border:"1px solid #6699ff"},
-    status_UnderConstruction:{bg:"#200e00",color:"#ff9940",border:"1px solid #ff9940"},
-    status_Planning:{bg:"#151515",color:"#666",border:"1px solid #2a2a2a"},
-  };
-  const k=type+"_"+(text||"").replace(/[\s\-\/]/g,"");
-  const s=map[k]||{bg:"#1a1a1a",color:"#666",border:"1px solid #2a2a2a"};
-  return <span style={{background:s.bg,color:s.color,border:s.border,padding:"2px 8px",fontSize:"10px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>{text}</span>;
+// ─── Detect HV transformer / circuit breaker relevance (MP core experience) ──
+function hasHVEquipment(p) {
+  const hay = [
+    ...(p.assetTypes || []),
+    p.summary || "",
+    p.mpEngagementWindow || "",
+    ...(p.mpServices || []),
+  ].join(" ").toLowerCase();
+  return /transformer|circuit breaker|circuit-breaker|switchgear|gis\b|substation|hv transmission|high.?voltage|\bhv\b|grid connection|converter station/.test(hay);
 }
-function HVBadge(){return <span title="HV transformers / circuit breakers — MP core experience" style={{background:"#2a1500",color:C.yellow,border:"1px solid "+C.yellow,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>⚡ HV EQUIP</span>;}
-function ChangeBadge({status}){
-  if(status==="new")return <span style={{background:"#0d2914",color:C.newColor,border:"1px solid "+C.newColor,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap"}}>🆕 NEW</span>;
-  if(status==="updated")return <span style={{background:"#0a1f29",color:C.updatedColor,border:"1px solid "+C.updatedColor,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap"}}>↻ UPDATED</span>;
+
+// ─── Detect data centre projects (grid connection / substation opportunity) ──
+function isDataCentre(p) {
+  const hay = [
+    ...(p.assetTypes || []),
+    p.summary || "",
+    p.projectName || "",
+    ...(p.companies || []),
+  ].join(" ").toLowerCase();
+  return /data ?cent(er|re)|hyperscale|\bdc\b|colocation|colo\b|cloud campus/.test(hay);
+}
+
+// ─── Badge ────────────────────────────────────────────────────────────────────
+function Badge({ text, type }) {
+  const map = {
+    priority_High:            { bg: C.yellow,  color: C.black,  border: "none" },
+    priority_Medium:          { bg: "#1c1c00", color: C.yellow, border: `1px solid ${C.yellow}` },
+    priority_Low:             { bg: "#151515", color: "#555",   border: "1px solid #2a2a2a" },
+    status_PreTender:         { bg: "#0c200c", color: "#5cb85c",border: "1px solid #5cb85c" },
+    status_TenderActive:      { bg: C.yellow,  color: C.black,  border: "none" },
+    status_Awarded:           { bg: "#0c0c25", color: "#6699ff",border: "1px solid #6699ff" },
+    status_UnderConstruction: { bg: "#200e00", color: "#ff9940",border: "1px solid #ff9940" },
+    status_Planning:          { bg: "#151515", color: "#666",   border: "1px solid #2a2a2a" },
+  };
+  const safeKey = `${type}_${(text || "").replace(/[\s\-\/]/g, "")}`;
+  const s = map[safeKey] || { bg: "#1a1a1a", color: "#666", border: "1px solid #2a2a2a" };
+  return (
+    <span style={{ background: s.bg, color: s.color, border: s.border, padding: "2px 8px", fontSize: "10px", fontWeight: "bold", fontFamily: "Arial, sans-serif", textTransform: "uppercase", letterSpacing: "0.6px", display: "inline-block", whiteSpace: "nowrap" }}>{text}</span>
+  );
+}
+
+// ─── Change badge (NEW / UPDATED) ──────────────────────────────────────────────
+function ChangeBadge({ status }) {
+  if (status === "new") return (
+    <span style={{ background: "#0d2914", color: C.newColor, border: `1px solid ${C.newColor}`, padding: "2px 7px", fontSize: "9px", fontWeight: "bold", fontFamily: "Arial,sans-serif", textTransform: "uppercase", letterSpacing: "0.6px", display: "inline-block", whiteSpace: "nowrap" }}>🆕 NEW</span>
+  );
+  if (status === "updated") return (
+    <span style={{ background: "#0a1f29", color: C.updatedColor, border: `1px solid ${C.updatedColor}`, padding: "2px 7px", fontSize: "9px", fontWeight: "bold", fontFamily: "Arial,sans-serif", textTransform: "uppercase", letterSpacing: "0.6px", display: "inline-block", whiteSpace: "nowrap" }}>↻ UPDATED</span>
+  );
   return null;
 }
-const Flag=({country})=><span style={{fontSize:"14px",lineHeight:1}}>{country==="Australia"?"🇦🇺":country==="Brazil"?"🇧🇷":"🌐"}</span>;
-function StatCard({value,label,accent,color}){return <div><div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"30px",color:color||(accent?C.yellow:C.white),lineHeight:1}}>{value}</div><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",marginTop:"4px"}}>{label}</div></div>;}
-const SectionLabel=({children})=><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.yellow,textTransform:"uppercase",letterSpacing:"1.5px",fontWeight:"bold",marginBottom:"6px",borderBottom:"1px solid "+C.border,paddingBottom:"5px"}}>{children}</div>;
 
-function DetailPanel({project:p,onClose,onPinToggle}){
-  if(!p)return null;
-  const rows=[
-    {label:"Summary",val:p.summary},
-    {label:"Asset Types",val:(p.assetTypes||[]).join(", ")},
-    {label:"All Companies",val:(p.companies||[]).join(", ")},
-    {label:"Funding Sources",val:(p.fundingSources||[]).join(", ")},
-    {label:"MP Services",val:(p.mpServices||[]).join(", ")},
-  ];
+// ─── HV equipment badge (MP core experience: transformers, circuit breakers) ─
+function HVBadge() {
   return (
-    <div style={{background:"#050505",borderTop:"3px solid "+C.yellow,marginTop:"16px"}}>
-      <div style={{background:C.yellow,padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:"12px",flexWrap:"wrap"}}>
-          <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"12px",textTransform:"uppercase",letterSpacing:"1.5px",color:C.black}}>PROJECT DETAIL — {(p.projectName||"").toUpperCase()}</div>
-          {p._pinned&&<span style={{background:C.black,color:C.yellow,fontSize:"9px",padding:"2px 7px",fontFamily:"Arial,sans-serif",fontWeight:"bold",letterSpacing:"1px"}}>📌 PINNED</span>}
-          {hasHVEquipment(p)&&<HVBadge/>}
-          <ChangeBadge status={p._changeStatus}/>
+    <span title="HV transformers / circuit breakers — MP core experience" style={{ background: "#2a1500", color: C.yellow, border: `1px solid ${C.yellow}`, padding: "2px 7px", fontSize: "9px", fontWeight: "bold", fontFamily: "Arial,sans-serif", textTransform: "uppercase", letterSpacing: "0.6px", display: "inline-block", whiteSpace: "nowrap" }}>⚡ HV EQUIP</span>
+  );
+}
+
+// ─── Data centre badge (grid connection / substation / transmission build) ───
+function DCBadge() {
+  return (
+    <span title="Data centre — grid connection, substation & transmission opportunity" style={{ background: "#0a1a2a", color: "#7cc4ff", border: "1px solid #7cc4ff", padding: "2px 7px", fontSize: "9px", fontWeight: "bold", fontFamily: "Arial,sans-serif", textTransform: "uppercase", letterSpacing: "0.6px", display: "inline-block", whiteSpace: "nowrap" }}>🖥 DATA CENTRE</span>
+  );
+}
+
+const Flag = ({ country }) =>
+  <span style={{ fontSize: "14px", lineHeight: 1 }}>
+    {country === "Australia" ? "🇦🇺" : country === "Brazil" ? "🇧🇷" : "🌐"}
+  </span>;
+
+function StatCard({ value, label, accent, color }) {
+  return (
+    <div>
+      <div style={{ fontFamily: "'Calibri','Trebuchet MS',Arial,sans-serif", fontWeight: "bold", fontSize: "30px", color: color || (accent ? C.yellow : C.white), lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: "Arial,sans-serif", fontSize: "10px", color: C.muted, textTransform: "uppercase", letterSpacing: "1.5px", marginTop: "4px" }}>{label}</div>
+    </div>
+  );
+}
+
+const SectionLabel = ({ children }) => (
+  <div style={{ fontFamily: "Arial,sans-serif", fontSize: "10px", color: C.yellow, textTransform: "uppercase", letterSpacing: "1.5px", fontWeight: "bold", marginBottom: "6px", borderBottom: `1px solid ${C.border}`, paddingBottom: "5px" }}>{children}</div>
+);
+
+// ─── Add/Edit Project Modal ────────────────────────────────────────────────────
+const BLANK = {
+  projectName: "", location: "", country: "Australia",
+  procurementStart: "", procurementStatus: "Pre-tender",
+  assetTypes: "", companies: "", fundingSources: "",
+  projectValue: "", capacityMW: "", linkedinContacts: "",
+  mpEngagementWindow: "", mpServices: "",
+  priority: "High", sourceUrl: "", summary: "",
+};
+
+function PinnedModal({ initial, onSave, onClose }) {
+  const [f, setF] = useState(initial ? {
+    ...initial,
+    assetTypes:       (initial.assetTypes || []).join(", "),
+    companies:        (initial.companies || []).join(", "),
+    fundingSources:   (initial.fundingSources || []).join(", "),
+    linkedinContacts: (initial.linkedinContacts || []).join(", "),
+    mpServices:       (initial.mpServices || []).join(", "),
+    capacityMW:       initial.capacityMW || "",
+  } : BLANK);
+
+  const inp = (key) => ({
+    value: f[key], onChange: e => setF(p => ({ ...p, [key]: e.target.value })),
+    style: { width: "100%", background: "#0a0a0a", color: C.white, border: `1px solid ${C.border}`, padding: "7px 10px", fontFamily: "Arial,sans-serif", fontSize: "12px", boxSizing: "border-box" },
+  });
+  const sel = (key, opts) => (
+    <select {...inp(key)} style={{ ...inp(key).style, cursor: "pointer" }}>
+      {opts.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+  function handleSave() {
+    if (!f.projectName.trim()) return;
+    const csv = s => s.split(",").map(x => x.trim()).filter(Boolean);
+    onSave({ ...f, assetTypes: csv(f.assetTypes), companies: csv(f.companies), fundingSources: csv(f.fundingSources), linkedinContacts: csv(f.linkedinContacts), mpServices: csv(f.mpServices), capacityMW: Number(f.capacityMW) || 0, lastUpdated: "Pinned", _pinned: true });
+  }
+  const LBL = ({ children }) => <div style={{ fontFamily: "Arial,sans-serif", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "4px" }}>{children}</div>;
+  const Field = ({ label, children }) => <div style={{ marginBottom: "12px" }}><LBL>{label}</LBL>{children}</div>;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+      <div style={{ background: "#080808", border: `1px solid ${C.border}`, width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
+        <div style={{ background: C.yellow, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontFamily: "'Calibri','Trebuchet MS',Arial,sans-serif", fontWeight: "bold", fontSize: "13px", textTransform: "uppercase", letterSpacing: "1.5px", color: C.black }}>{initial ? "EDIT PROJECT" : "ADD PROJECT"}</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: C.black, fontSize: "18px", cursor: "pointer" }}>✕</button>
         </div>
-        {p._changeStatus==="updated"&&(p._changedFields||[]).length>0&&(
-          <div style={{width:"100%",marginTop:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#0a4a5c",fontWeight:"bold",letterSpacing:"0.5px"}}>
-            ↻ CHANGED THIS SCAN: {(p._changedFields||[]).map(f=>({procurementStart:"Procurement Start",procurementStatus:"Status",priority:"Priority",capacityMW:"Capacity",mpEngagementWindow:"Engagement Window",projectValue:"Project Value"}[f]||f)).join(" · ").toUpperCase()}
-          </div>
-        )}
-        <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
-          {onPinToggle&&<button onClick={()=>onPinToggle(p)} style={{background:p._pinned?"none":C.black,border:p._pinned?"1px solid "+C.black:"none",color:p._pinned?C.black:C.yellow,fontSize:"11px",cursor:"pointer",padding:"4px 10px",fontFamily:"Arial,sans-serif",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.8px"}}>{p._pinned?"UNPIN":"📌 PIN"}</button>}
-          <button onClick={onClose} style={{background:"none",border:"none",color:C.black,fontSize:"18px",cursor:"pointer",lineHeight:1,padding:"0 4px"}}>✕</button>
+        <div style={{ padding: "20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+          <Field label="Project Name *"><input {...inp("projectName")} /></Field>
+          <Field label="Location"><input {...inp("location")} /></Field>
+          <Field label="Country">{sel("country", ["Australia", "Brazil"])}</Field>
+          <Field label="Procurement Start (e.g. Q3 2026)"><input {...inp("procurementStart")} /></Field>
+          <Field label="Status">{sel("procurementStatus", ["Pre-tender","Tender Active","Awarded","Under Construction","Planning"])}</Field>
+          <Field label="Priority">{sel("priority", ["High","Medium","Low"])}</Field>
+          <Field label="Capacity (MW)"><input {...inp("capacityMW")} type="number" /></Field>
+          <Field label="Project Value"><input {...inp("projectValue")} /></Field>
+          <div style={{ gridColumn: "1/-1" }}><Field label="Asset Types (comma-separated)"><input {...inp("assetTypes")} /></Field></div>
+          <div style={{ gridColumn: "1/-1" }}><Field label="Companies (comma-separated)"><input {...inp("companies")} /></Field></div>
+          <div style={{ gridColumn: "1/-1" }}><Field label="Funding Sources (comma-separated)"><input {...inp("fundingSources")} /></Field></div>
+          <div style={{ gridColumn: "1/-1" }}><Field label="MP Services (comma-separated)"><input {...inp("mpServices")} /></Field></div>
+          <div style={{ gridColumn: "1/-1" }}><Field label="LinkedIn Contacts / Titles (comma-separated)"><input {...inp("linkedinContacts")} /></Field></div>
+          <div style={{ gridColumn: "1/-1" }}><Field label="MP Engagement Window"><input {...inp("mpEngagementWindow")} /></Field></div>
+          <div style={{ gridColumn: "1/-1" }}><Field label="Summary"><textarea {...inp("summary")} rows={3} style={{ ...inp("summary").style, resize: "vertical" }} /></Field></div>
+          <div style={{ gridColumn: "1/-1" }}><Field label="Source URL"><input {...inp("sourceUrl")} /></Field></div>
         </div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
-        <div style={{padding:"20px",borderRight:"1px solid "+C.border}}>
-          <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"16px"}}>
-            <Flag country={p.country}/><Badge text={p.priority} type="priority"/><Badge text={p.procurementStatus} type="status"/>
-          </div>
-          <div style={{background:C.card,borderLeft:"3px solid "+C.yellow,padding:"12px 14px",marginBottom:"16px"}}>
-            <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"6px"}}>⚡ MP ENGAGEMENT WINDOW</div>
-            <div style={{color:C.white,fontFamily:"Arial,sans-serif",fontSize:"13px",fontWeight:"bold"}}>{p.mpEngagementWindow||"Review procurement timeline"}</div>
-            <div style={{color:C.muted,fontFamily:"Arial,sans-serif",fontSize:"11px",marginTop:"4px"}}>Procurement start: {p.procurementStart||"TBD"}</div>
-          </div>
-          <div style={{marginBottom:"14px"}}>
-            <SectionLabel>Location & Scale</SectionLabel>
-            <div style={{color:"#aaa",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>
-              {p.location}
-              {p.capacityMW?<span style={{color:C.yellow,fontWeight:"bold"}}> · {Number(p.capacityMW).toLocaleString()} MW</span>:""}
-              {p.projectValue?<span style={{color:"#777"}}> · {p.projectValue}</span>:""}
-            </div>
-          </div>
-          {(p.mpServices||[]).length>0&&(
-            <div><SectionLabel>MadePartners Services</SectionLabel>
-              <div style={{display:"flex",flexWrap:"wrap",gap:"6px"}}>
-                {p.mpServices.map((s,i)=><span key={i} style={{border:"1px solid "+C.yellow,color:C.yellow,fontSize:"10px",padding:"3px 8px",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.5px"}}>{s}</span>)}
-              </div>
-            </div>
-          )}
-        </div>
-        <div style={{padding:"20px"}}>
-          {rows.filter(r=>r.val).map(({label,val})=>(
-            <div key={label} style={{marginBottom:"14px"}}>
-              <SectionLabel>{label}</SectionLabel>
-              <div style={{color:"#bbb",fontFamily:"Arial,sans-serif",fontSize:"12px",lineHeight:"1.7"}}>{val}</div>
-            </div>
-          ))}
-          {p.sourceUrl&&<div style={{marginTop:"8px"}}><a href={p.sourceUrl} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>→ View source article</a></div>}
+        <div style={{ padding: "14px 20px", borderTop: `1px solid ${C.border}`, display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={{ background: "none", border: `1px solid ${C.border}`, color: "#555", padding: "8px 20px", fontFamily: "Arial,sans-serif", fontSize: "11px", textTransform: "uppercase", cursor: "pointer", letterSpacing: "1px" }}>CANCEL</button>
+          <button onClick={handleSave} style={{ background: C.yellow, border: "none", color: C.black, padding: "8px 24px", fontFamily: "Arial,sans-serif", fontWeight: "bold", fontSize: "11px", textTransform: "uppercase", cursor: "pointer", letterSpacing: "1px" }}>SAVE PROJECT</button>
         </div>
       </div>
     </div>
   );
 }
 
-function TimelineView({projects,onSelect,selected,onPinToggle}){
-  const buckets=["Now / Immediate","Q3 2025","Q4 2025","Q1 2026","Q2 2026","Q3 2026","Q4 2026","2027+","TBD"];
-  const assign=(p)=>{
-    const ps=(p.procurementStart||"").toLowerCase();
-    if(!ps||ps==="tbd"||ps==="unknown")return "TBD";
-    if(ps.includes("now")||ps.includes("immediate")||ps.includes("urgent"))return "Now / Immediate";
-    for(const b of buckets){if(b==="Now / Immediate"||b==="TBD"||b==="2027+")continue;if(ps.includes(b.toLowerCase()))return b;}
-    if(ps.includes("2027")||ps.includes("2028")||ps.includes("2029"))return "2027+";
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
+function DetailPanel({ project: p, onClose, onEdit, onPinToggle }) {
+  const [contacts, setContacts]       = useState(null);
+  const [findingContacts, setFinding] = useState(false);
+  const [contactError, setContactError] = useState("");
+
+  // Reset contact results when switching to a different project
+  useEffect(() => { setContacts(null); setContactError(""); setFinding(false); }, [p?.projectName]);
+
+  if (!p) return null;
+  const rows = [
+    { label: "Summary",            val: p.summary },
+    { label: "Asset Types",        val: (p.assetTypes || []).join(", ") },
+    { label: "All Companies",      val: (p.companies || []).join(", ") },
+    { label: "Funding Sources",    val: (p.fundingSources || []).join(", ") },
+    { label: "MP Services",        val: (p.mpServices || []).join(", ") },
+  ];
+
+  async function findContacts() {
+    setFinding(true); setContactError(""); setContacts(null);
+    const targetRoles = (p.linkedinContacts || []).length
+      ? (p.linkedinContacts || []).join(", ")
+      : "Project Director, Procurement Manager, Head of Quality, EPC Manager";
+    const sys = `You are a B2B research assistant finding PUBLICLY NAMED individuals associated with a specific infrastructure project, for legitimate business development outreach by MadePartners (a quality/inspection services firm).
+
+STRICT RULES:
+- Only return a person's name if it appears in a real, citable public source (company leadership page, press release, news article, project announcement, conference listing). 
+- NEVER invent, guess, or infer a name. If you cannot find a verified public name for a role, you MUST return that role with name=null.
+- Do NOT scrape or claim to access LinkedIn private data. Use only openly published web information.
+- Every named person MUST have a sourceUrl pointing to where their name+role was published.
+
+Return ONLY raw JSON, no markdown:
+{"contacts":[{"role":"","name":null,"company":"","sourceUrl":"","note":""}],"searchNote":""}
+- role: the target role (use the roles provided)
+- name: the verified public name, or null if none found
+- company: which project company they're associated with
+- sourceUrl: citation URL (required if name is not null; empty if name is null)
+- note: short context (e.g. "Named in 2025 project announcement") or why none found`;
+
+    try {
+      const resp = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 3000,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          system: sys,
+          messages: [{ role: "user", content: `Project: "${p.projectName}" in ${p.location || p.country}. Companies involved: ${(p.companies || []).join(", ") || "unknown"}. Find publicly named people in these roles: ${targetRoles}. Return ONLY the JSON object — no other text. Remember: name=null if no verified public source exists.` }],
+        }),
+      }, { retries: 3, baseDelay: 1500 });
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error?.message || `API ${resp.status}`); }
+      const data = await resp.json();
+      const raw = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+      const cleaned = raw.replace(/```json|```/gi, "").trim();
+      const s = cleaned.indexOf("{"), en = cleaned.lastIndexOf("}");
+      const parsed = JSON.parse(cleaned.slice(s, en + 1));
+      setContacts(parsed.contacts || []);
+    } catch (err) {
+      setContactError(err.message || "Search failed");
+    } finally {
+      setFinding(false);
+    }
+  }
+
+  return (
+    <div style={{ background: "#050505", borderTop: `3px solid ${C.yellow}`, padding: "0", marginTop: "16px" }}>
+      <div style={{ background: C.yellow, padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ fontFamily: "'Calibri','Trebuchet MS',Arial,sans-serif", fontWeight: "bold", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1.5px", color: C.black }}>
+            PROJECT DETAIL — {p.projectName?.toUpperCase()}
+          </div>
+          {p._pinned && <span style={{ background: C.black, color: C.yellow, fontSize: "9px", padding: "2px 7px", fontFamily: "Arial,sans-serif", fontWeight: "bold", letterSpacing: "1px" }}>📌 PINNED</span>}
+          {hasHVEquipment(p) && <HVBadge />}
+          {isDataCentre(p) && <DCBadge />}
+          <ChangeBadge status={p._changeStatus} />
+        </div>
+        {p._changeStatus === "updated" && (p._changedFields || []).length > 0 && (
+          <div style={{ width: "100%", marginTop: "4px", fontFamily: "Arial,sans-serif", fontSize: "10px", color: "#0a4a5c", fontWeight: "bold", letterSpacing: "0.5px" }}>
+            ↻ CHANGED THIS SCAN: {(p._changedFields || []).map(f => ({
+              procurementStart: "Procurement Start", procurementStatus: "Status",
+              priority: "Priority", capacityMW: "Capacity", mpEngagementWindow: "Engagement Window", projectValue: "Project Value",
+            }[f] || f)).join(" · ").toUpperCase()}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {p._pinned && onEdit && (
+            <button onClick={() => onEdit(p)} style={{ background: C.black, border: "none", color: C.yellow, fontSize: "11px", cursor: "pointer", padding: "4px 10px", fontFamily: "Arial,sans-serif", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.8px" }}>✎ EDIT</button>
+          )}
+          {onPinToggle && (
+            <button onClick={() => onPinToggle(p)} style={{
+              background: p._pinned ? "none" : C.black,
+              border: p._pinned ? `1px solid ${C.black}` : "none",
+              color: p._pinned ? C.black : C.yellow,
+              fontSize: "11px", cursor: "pointer", padding: "4px 10px",
+              fontFamily: "Arial,sans-serif", fontWeight: "bold",
+              textTransform: "uppercase", letterSpacing: "0.8px",
+            }}>{p._pinned ? "UNPIN" : "📌 PIN"}</button>
+          )}
+          <button onClick={onClose} style={{ background: "none", border: "none", color: C.black, fontSize: "18px", cursor: "pointer", lineHeight: 1, padding: "0 4px" }}>✕</button>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0" }}>
+        <div style={{ padding: "20px", borderRight: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+            <Flag country={p.country} /><Badge text={p.priority} type="priority" /><Badge text={p.procurementStatus} type="status" />
+          </div>
+          <div style={{ background: C.card, borderLeft: `3px solid ${C.yellow}`, padding: "12px 14px", marginBottom: "16px" }}>
+            <div style={{ color: C.yellow, fontFamily: "Arial,sans-serif", fontWeight: "bold", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "6px" }}>⚡ MP ENGAGEMENT WINDOW</div>
+            <div style={{ color: C.white, fontFamily: "Arial,sans-serif", fontSize: "13px", fontWeight: "bold" }}>{p.mpEngagementWindow || "Review procurement timeline"}</div>
+            <div style={{ color: C.muted, fontFamily: "Arial,sans-serif", fontSize: "11px", marginTop: "4px" }}>Procurement start: {p.procurementStart || "TBD"}</div>
+          </div>
+          <div style={{ marginBottom: "14px" }}>
+            <SectionLabel>Location & Scale</SectionLabel>
+            <div style={{ color: "#aaa", fontFamily: "Arial,sans-serif", fontSize: "13px" }}>
+              {p.location}
+              {p.capacityMW ? <span style={{ color: C.yellow, fontWeight: "bold" }}> · {p.capacityMW.toLocaleString()} MW</span> : ""}
+              {p.projectValue ? <span style={{ color: "#777" }}> · {p.projectValue}</span> : ""}
+            </div>
+          </div>
+          {p.mpServices?.length > 0 && (
+            <div>
+              <SectionLabel>MadePartners Services</SectionLabel>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {p.mpServices.map((s, i) => (
+                  <span key={i} style={{ border: `1px solid ${C.yellow}`, color: C.yellow, fontSize: "10px", padding: "3px 8px", fontFamily: "Arial,sans-serif", textTransform: "uppercase", letterSpacing: "0.5px" }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{ padding: "20px" }}>
+          {rows.filter(r => r.val).map(({ label, val }) => (
+            <div key={label} style={{ marginBottom: "14px" }}>
+              <SectionLabel>{label}</SectionLabel>
+              <div style={{ color: "#bbb", fontFamily: "Arial,sans-serif", fontSize: "12px", lineHeight: "1.7" }}>{val}</div>
+            </div>
+          ))}
+
+          {/* ── Contact Finder ── */}
+          <div style={{ marginBottom: "14px" }}>
+            <SectionLabel>Key Contacts — Outreach Targets</SectionLabel>
+
+            {contacts === null && !findingContacts && (
+              <div>
+                <div style={{ color: "#777", fontFamily: "Arial,sans-serif", fontSize: "12px", lineHeight: "1.7", marginBottom: "8px" }}>
+                  Target roles: {(p.linkedinContacts || ["Project Director","Procurement Manager","Head of Quality"]).join(", ")}
+                </div>
+                <button onClick={findContacts} style={{ background: "none", border: `1px solid ${C.yellow}`, color: C.yellow, padding: "7px 14px", fontFamily: "Arial,sans-serif", fontWeight: "bold", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>
+                  🔍 Find Named Contacts
+                </button>
+                <div style={{ color: "#444", fontFamily: "Arial,sans-serif", fontSize: "10px", marginTop: "6px", lineHeight: 1.5 }}>
+                  Searches public sources (news, press releases, company sites) only. Returns verified names with citations, or the generic role where no public name exists.
+                </div>
+              </div>
+            )}
+
+            {findingContacts && (
+              <div style={{ color: C.yellow, fontFamily: "'Courier New',monospace", fontSize: "11px", padding: "8px 0" }}>
+                <span style={{ display: "inline-block", animation: "spin 1s linear infinite", marginRight: "8px" }}>⟳</span>
+                Searching public sources…
+              </div>
+            )}
+
+            {contactError && (
+              <div style={{ color: "#e05050", fontFamily: "Arial,sans-serif", fontSize: "11px", padding: "6px 0" }}>
+                ⚠ {contactError} — <button onClick={findContacts} style={{ background: "none", border: "none", color: C.yellow, cursor: "pointer", textDecoration: "underline", fontSize: "11px", padding: 0 }}>retry</button>
+              </div>
+            )}
+
+            {contacts !== null && !findingContacts && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {contacts.length === 0 && (
+                  <div style={{ color: "#777", fontFamily: "Arial,sans-serif", fontSize: "11px" }}>No roles returned.</div>
+                )}
+                {contacts.map((c, i) => (
+                  <div key={i} style={{ background: C.card, border: `1px solid ${C.border}`, borderLeft: `3px solid ${c.name ? C.newColor : "#333"}`, padding: "8px 12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                      <span style={{ color: c.name ? C.white : "#666", fontFamily: "Arial,sans-serif", fontSize: "12px", fontWeight: "bold" }}>
+                        {c.name ? c.name : <span style={{ fontStyle: "italic", fontWeight: "normal" }}>No public name found</span>}
+                      </span>
+                      <span style={{ color: C.yellow, fontFamily: "Arial,sans-serif", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right" }}>{c.role}</span>
+                    </div>
+                    {c.company && <div style={{ color: "#666", fontFamily: "Arial,sans-serif", fontSize: "10px", marginTop: "2px" }}>{c.company}</div>}
+                    {c.note && <div style={{ color: "#555", fontFamily: "Arial,sans-serif", fontSize: "10px", marginTop: "3px", fontStyle: "italic" }}>{c.note}</div>}
+                    {c.name && c.sourceUrl && (
+                      <a href={c.sourceUrl} target="_blank" rel="noreferrer" style={{ color: C.newColor, fontFamily: "Arial,sans-serif", fontSize: "10px", textDecoration: "none", display: "inline-block", marginTop: "4px" }}>→ source</a>
+                    )}
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: "12px", marginTop: "4px", alignItems: "center" }}>
+                  <button onClick={findContacts} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontFamily: "Arial,sans-serif", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.5px", padding: 0 }}>↻ Re-search</button>
+                  <span style={{ color: "#333", fontFamily: "Arial,sans-serif", fontSize: "9px" }}>Verify names independently before outreach. Public sources only — no LinkedIn private data.</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {p.sourceUrl && (
+            <div style={{ marginTop: "8px" }}>
+              <a href={p.sourceUrl} target="_blank" rel="noreferrer" style={{ color: C.yellow, fontFamily: "Arial,sans-serif", fontSize: "12px", textDecoration: "none" }}>→ View source article</a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Timeline View ─────────────────────────────────────────────────────────────
+function TimelineView({ projects, onSelect, selected, onDelete, onPinToggle }) {
+  const buckets = ["Now / Immediate","Q3 2025","Q4 2025","Q1 2026","Q2 2026","Q3 2026","Q4 2026","2027+","TBD"];
+  const assign = (p) => {
+    const ps = (p.procurementStart || "").toLowerCase();
+    if (!ps || ps === "tbd" || ps === "unknown") return "TBD";
+    if (ps.includes("now") || ps.includes("immediate") || ps.includes("urgent")) return "Now / Immediate";
+    for (const b of buckets) {
+      if (b === "Now / Immediate" || b === "TBD" || b === "2027+") continue;
+      if (ps.includes(b.toLowerCase())) return b;
+    }
+    if (ps.includes("2027") || ps.includes("2028") || ps.includes("2029")) return "2027+";
     return "TBD";
   };
-  const grouped={};buckets.forEach(b=>grouped[b]=[]);
-  projects.forEach(p=>grouped[assign(p)].push(p));
-  const active=buckets.filter(b=>grouped[b].length>0);
-  const bc=(p)=>p._pinned?C.yellow:p._changeStatus==="new"?C.newColor:p._changeStatus==="updated"?C.updatedColor:p.priority==="High"?C.yellow:p.priority==="Medium"?"#444":"#222";
+  const grouped = {};
+  buckets.forEach(b => { grouped[b] = []; });
+  projects.forEach(p => { grouped[assign(p)].push(p); });
+  const active = buckets.filter(b => grouped[b].length > 0);
+
+  const borderColorFor = (p) => p._pinned ? C.yellow
+    : p._changeStatus === "new" ? C.newColor
+    : p._changeStatus === "updated" ? C.updatedColor
+    : p.priority === "High" ? C.yellow : p.priority === "Medium" ? "#444" : "#222";
+
   return (
     <div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>MADEPARTNERS ENGAGEMENT TIMELINE — RECOMMENDED OUTREACH WINDOWS BY PROCUREMENT PHASE</div>
-      <div style={{position:"relative"}}>
-        <div style={{position:"absolute",left:"99px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, "+C.yellow+", #222)"}}/>
-        {active.map((bucket,bi)=>(
-          <div key={bucket} style={{display:"flex",marginBottom:"20px"}}>
-            <div style={{width:"100px",minWidth:"100px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative"}}>
-              <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"12px",color:bi===0?C.yellow:"#777",textTransform:"uppercase",lineHeight:1.2}}>{bucket}</div>
-              <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#333",marginTop:"3px"}}>{grouped[bucket].length} project{grouped[bucket].length!==1?"s":""}</div>
-              <div style={{position:"absolute",right:"-7px",top:"15px",width:"12px",height:"12px",borderRadius:"50%",background:bi===0?C.yellow:C.border,border:bi===0?"none":"2px solid "+C.muted,zIndex:1}}/>
+      <div style={{ fontFamily: "Arial,sans-serif", fontSize: "10px", color: C.muted, textTransform: "uppercase", letterSpacing: "2px", marginBottom: "24px", paddingBottom: "12px", borderBottom: `1px solid ${C.border}` }}>
+        MADEPARTNERS ENGAGEMENT TIMELINE — RECOMMENDED OUTREACH WINDOWS BY PROCUREMENT PHASE
+      </div>
+      <div style={{ position: "relative" }}>
+        <div style={{ position: "absolute", left: "99px", top: 0, bottom: 0, width: "2px", background: `linear-gradient(to bottom, ${C.yellow}, #222)` }} />
+        {active.map((bucket, bi) => (
+          <div key={bucket} style={{ display: "flex", marginBottom: "20px" }}>
+            <div style={{ width: "100px", minWidth: "100px", paddingRight: "16px", paddingTop: "14px", textAlign: "right", position: "relative" }}>
+              <div style={{ fontFamily: "'Calibri','Trebuchet MS',Arial,sans-serif", fontWeight: "bold", fontSize: "12px", color: bi === 0 ? C.yellow : "#777", textTransform: "uppercase", lineHeight: 1.2 }}>{bucket}</div>
+              <div style={{ fontFamily: "Arial,sans-serif", fontSize: "10px", color: "#333", marginTop: "3px" }}>{grouped[bucket].length} project{grouped[bucket].length !== 1 ? "s" : ""}</div>
+              <div style={{ position: "absolute", right: "-7px", top: "15px", width: "12px", height: "12px", borderRadius: "50%", background: bi === 0 ? C.yellow : C.border, border: bi === 0 ? "none" : `2px solid ${C.muted}`, zIndex: 1 }} />
             </div>
-            <div style={{flex:1,paddingLeft:"24px",display:"flex",flexDirection:"column",gap:"8px"}}>
-              {grouped[bucket].map((p,pi)=>(
-                <div key={pi} style={{position:"relative"}}>
-                  <div onClick={()=>onSelect(p)} style={{background:selected&&selected.projectName===p.projectName?"#1a1400":C.card,padding:"12px 16px",paddingRight:"44px",cursor:"pointer",border:selected&&selected.projectName===p.projectName?"1px solid "+C.yellow:"1px solid "+C.border,borderLeftWidth:"4px",borderLeftColor:bc(p)}}>
-                    <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px"}}>
-                      <div style={{flex:1}}>
-                        <div style={{color:C.white,fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"13px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-                          <Flag country={p.country}/> {p.projectName}
-                          {p._pinned&&<span style={{fontSize:"10px",color:C.yellow}}>📌</span>}
-                          {hasHVEquipment(p)&&<HVBadge/>}
-                          <ChangeBadge status={p._changeStatus}/>
+            <div style={{ flex: 1, paddingLeft: "24px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              {grouped[bucket].map((p, pi) => (
+                <div key={pi} style={{ position: "relative" }}>
+                  <div onClick={() => onSelect(selected?.projectName === p.projectName ? null : p)} style={{
+                    background: selected?.projectName === p.projectName ? "#1a1400" : C.card,
+                    padding: "12px 16px", paddingRight: "68px", cursor: "pointer",
+                    border: selected?.projectName === p.projectName ? `1px solid ${C.yellow}` : `1px solid ${C.border}`,
+                    borderLeftWidth: "4px",
+                    borderLeftColor: borderColorFor(p),
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: C.white, fontFamily: "Arial,sans-serif", fontWeight: "bold", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <Flag country={p.country} /> {p.projectName}
+                          {p._pinned && <span style={{ fontSize: "10px", color: C.yellow }}>📌</span>}
+                          {hasHVEquipment(p) && <HVBadge />}
+                          {isDataCentre(p) && <DCBadge />}
+                          <ChangeBadge status={p._changeStatus} />
                         </div>
-                        <div style={{color:"#666",fontFamily:"Arial,sans-serif",fontSize:"11px",marginTop:"3px"}}>{p.location}{p.capacityMW?" · "+Number(p.capacityMW).toLocaleString()+" MW":""}{p.projectValue?" · "+p.projectValue:""}</div>
+                        <div style={{ color: "#666", fontFamily: "Arial,sans-serif", fontSize: "11px", marginTop: "3px" }}>
+                          {p.location}{p.capacityMW ? ` · ${p.capacityMW.toLocaleString()} MW` : ""}{p.projectValue ? ` · ${p.projectValue}` : ""}
+                        </div>
                       </div>
-                      <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
-                        <Badge text={p.priority} type="priority"/><Badge text={p.procurementStatus} type="status"/>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        <Badge text={p.priority} type="priority" />
+                        <Badge text={p.procurementStatus} type="status" />
                       </div>
                     </div>
-                    <div style={{marginTop:"10px",background:"#080800",borderLeft:"2px solid "+C.yellow,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,fontWeight:"bold"}}>⚡ {p.mpEngagementWindow||"Review procurement timeline"}</div>
+                    <div style={{ marginTop: "10px", background: "#080800", borderLeft: `2px solid ${C.yellow}`, padding: "6px 10px", fontFamily: "Arial,sans-serif", fontSize: "11px", color: C.yellow, fontWeight: "bold" }}>
+                      ⚡ {p.mpEngagementWindow || "Review procurement timeline"}
+                    </div>
+                    {p.mpServices?.length > 0 && (
+                      <div style={{ display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap" }}>
+                        {p.mpServices.slice(0, 4).map((s, i) => (
+                          <span key={i} style={{ border: "1px solid #2a2a2a", color: "#555", fontSize: "10px", padding: "2px 6px", fontFamily: "Arial,sans-serif", textTransform: "uppercase", letterSpacing: "0.4px" }}>{s}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <button onClick={e=>{e.stopPropagation();onPinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{position:"absolute",top:"10px",right:"10px",background:"none",border:"none",color:p._pinned?C.yellow:"#777",opacity:p._pinned?1:0.6,fontSize:"14px",cursor:"pointer",padding:"4px 6px",lineHeight:1}}>📌</button>
+                  {/* Pin toggle */}
+                  <button onClick={e => { e.stopPropagation(); onPinToggle(p); }} title={p._pinned ? "Unpin project" : "Pin project"} style={{ position: "absolute", top: "10px", right: "38px", background: "none", border: "none", color: p._pinned ? C.yellow : "#333", fontSize: "14px", cursor: "pointer", padding: "4px 6px", lineHeight: 1, transition: "color 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.color = C.yellow}
+                    onMouseLeave={e => e.currentTarget.style.color = p._pinned ? C.yellow : "#333"}>📌</button>
+                  {/* Bin */}
+                  <button onClick={e => { e.stopPropagation(); onDelete(p); }} title="Remove project" style={{ position: "absolute", top: "10px", right: "10px", background: "none", border: "none", color: "#333", fontSize: "14px", cursor: "pointer", padding: "4px 6px", lineHeight: 1, transition: "color 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#cc3333"}
+                    onMouseLeave={e => e.currentTarget.style.color = "#333"}>🗑</button>
                 </div>
               ))}
             </div>
@@ -198,221 +531,517 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
   );
 }
 
-function App(){
-  const [projects,setProjects]=useState([]);
-  const [lastScan,setLastScan]=useState(null);
-  const [loading,setLoading]=useState(true);
-  const [error,setError]=useState("");
-  const [pins,setPins]=useState({});
-  const [tab,setTab]=useState("table");
-  const [selected,setSelected]=useState(null);
-  const [fCountry,setFCountry]=useState("All");
-  const [fPriority,setFPriority]=useState("All");
-  const [fStatus,setFStatus]=useState("All");
-  const [fChange,setFChange]=useState("All");
-  const [fHV,setFHV]=useState(false);
-  const [sortKey,setSortKey]=useState("priority");
-  const [sortDir,setSortDir]=useState("asc");
+// ─── Main App ─────────────────────────────────────────────────────────────────
+export default function MPRenewableIntelligence() {
+  const [scanned, setScanned]               = useState([]);
+  const [pinned, setPinned]                 = useState(DEFAULT_PINNED);
+  const [deletedNames, setDeletedNames]     = useState(new Set());
+  const [lastScan, setLastScan]             = useState(null);
+  const [scanning, setScanning]             = useState(false);
+  const [scanLog, setScanLog]               = useState("");
+  const [activeTab, setActiveTab]           = useState("table");
+  const [selected, setSelected]             = useState(null);
+  const [filterCountry, setFilterCountry]   = useState("All");
+  const [filterPriority, setFilterPriority] = useState("All");
+  const [filterStatus, setFilterStatus]     = useState([]); // multi-select: empty = all
+  const [filterSource, setFilterSource]     = useState("All");
+  const [filterChange, setFilterChange]     = useState("All");
+  const [filterHV, setFilterHV]             = useState(false);
+  const [filterDC, setFilterDC]             = useState(false);
+  const [statusOpen, setStatusOpen]         = useState(false);
+  const [sortKey, setSortKey]               = useState("priority");
+  const [sortDir, setSortDir]               = useState("asc");
+  const [showModal, setShowModal]           = useState(false);
+  const [editTarget, setEditTarget]         = useState(null);
 
-  useEffect(()=>{
-    try{const raw=localStorage.getItem(PIN_KEY);if(raw)setPins(JSON.parse(raw));}catch(e){}
-    (async()=>{
-      let cur=[],prev=[];
-      try{
-        const r=await fetch(PROJECTS_URL,{headers:{"Accept":"application/json"}});
-        if(!r.ok)throw new Error("Could not load projects.json (HTTP "+r.status+").");
-        const d=await r.json();cur=d.projects||[];if(d.lastScan)setLastScan(d.lastScan);
-      }catch(e){setError(e.message);}
-      try{const rp=await fetch(PREV_URL,{headers:{"Accept":"application/json"}});if(rp.ok){const dp=await rp.json();prev=dp.projects||[];}}catch(e){}
-      try{const r2=await fetch(LASTSCAN_URL,{headers:{"Accept":"application/json"}});if(r2.ok){const d2=await r2.json();if(d2.lastScan)setLastScan(d2.lastScan);}}catch(e){}
-      setProjects(computeChangeStatus(cur,prev));
-      setLoading(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get(STORAGE_KEY);
+        if (r) { const d = JSON.parse(r.value); setScanned(d.projects || []); setLastScan(d.lastScan || null); }
+      } catch (_) {}
+      try {
+        const rp = await window.storage.get(PINNED_KEY);
+        if (rp) setPinned(JSON.parse(rp.value));
+      } catch (_) {}
+      try {
+        const rd = await window.storage.get(DELETED_KEY);
+        if (rd) setDeletedNames(new Set(JSON.parse(rd.value)));
+      } catch (_) {}
     })();
-  },[]);
+  }, []);
 
-  function savePins(np){setPins(np);try{localStorage.setItem(PIN_KEY,JSON.stringify(np));}catch(e){}}
-  function pinToggle(p){const k=(p.projectName||"").toLowerCase();const np={...pins};if(np[k])delete np[k];else np[k]=true;savePins(np);}
-  const isPinned=(p)=>!!pins[(p.projectName||"").toLowerCase()];
+  async function savePinned(list) {
+    setPinned(list);
+    try { await window.storage.set(PINNED_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+  async function saveScanned(projs, date) {
+    setScanned(projs); setLastScan(date);
+    try { await window.storage.set(STORAGE_KEY, JSON.stringify({ projects: projs, lastScan: date })); } catch (_) {}
+  }
+  async function saveDeleted(set) {
+    setDeletedNames(set);
+    try { await window.storage.set(DELETED_KEY, JSON.stringify([...set])); } catch (_) {}
+  }
 
-  const order={High:0,Medium:1,Low:2};
-  const withPins=projects.map(p=>({...p,_pinned:isPinned(p)}));
-  const displayed=withPins
-    .filter(p=>fCountry==="All"||p.country===fCountry)
-    .filter(p=>fPriority==="All"||p.priority===fPriority)
-    .filter(p=>fStatus==="All"||p.procurementStatus===fStatus)
-    .filter(p=>fChange==="All"||p._changeStatus===(fChange==="New"?"new":"updated"))
-    .filter(p=>!fHV||hasHVEquipment(p))
-    .sort((a,b)=>{
-      if(sortKey==="priority"){
-        if(a._pinned!==b._pinned)return a._pinned?-1:1;
-        const av=order[a.priority]??2,bv=order[b.priority]??2;
-        if(av!==bv)return sortDir==="asc"?av-bv:bv-av;
-        return (hasHVEquipment(a)?0:1)-(hasHVEquipment(b)?0:1);
+  function handleDelete(p) {
+    if (p._pinned) {
+      savePinned(pinned.filter(x => x.projectName !== p.projectName));
+    } else {
+      const next = new Set(deletedNames);
+      next.add(p.projectName.toLowerCase());
+      saveDeleted(next);
+    }
+    if (selected?.projectName === p.projectName) setSelected(null);
+  }
+
+  // Toggle pin status for ANY project (scanned or manual)
+  function handlePinToggle(p) {
+    if (p._pinned) {
+      savePinned(pinned.filter(x => x.projectName !== p.projectName));
+      if (selected?.projectName === p.projectName) setSelected({ ...p, _pinned: false });
+    } else {
+      const { _changeStatus, _changedFields, _id, ...rest } = p;
+      const newPinned = { ...rest, _pinned: true, lastUpdated: "Pinned" };
+      savePinned([...pinned, newPinned]);
+      if (selected?.projectName === p.projectName) setSelected(newPinned);
+    }
+  }
+
+  function extractProjects(raw) {
+    const cleaned = raw.replace(/```json|```/gi, "").trim();
+    try {
+      const s = cleaned.indexOf("{"), e = cleaned.lastIndexOf("}");
+      if (s !== -1 && e !== -1) {
+        const parsed = JSON.parse(cleaned.slice(s, e + 1));
+        if (Array.isArray(parsed.projects) && parsed.projects.length > 0)
+          return { projects: parsed.projects, summary: parsed.scanSummary || "" };
       }
-      let av,bv;
-      if(sortKey==="capacityMW"){av=Number(a.capacityMW)||0;bv=Number(b.capacityMW)||0;}
-      else{av=String(a[sortKey]||"");bv=String(b[sortKey]||"");}
-      if(av<bv)return sortDir==="asc"?-1:1;
-      if(av>bv)return sortDir==="asc"?1:-1;
+    } catch (_) {}
+    const projects = [];
+    const arrStart = cleaned.indexOf('"projects"');
+    if (arrStart === -1) return { projects: [], summary: "" };
+    let i = cleaned.indexOf("[", arrStart);
+    if (i === -1) return { projects: [], summary: "" };
+    i++;
+    while (i < cleaned.length) {
+      while (i < cleaned.length && /[\s,]/.test(cleaned[i])) i++;
+      if (i >= cleaned.length || cleaned[i] !== "{") break;
+      let depth = 0, j = i, inStr = false, esc = false;
+      while (j < cleaned.length) {
+        const ch = cleaned[j];
+        if (esc) { esc = false; j++; continue; }
+        if (ch === "\\" && inStr) { esc = true; j++; continue; }
+        if (ch === '"') { inStr = !inStr; j++; continue; }
+        if (!inStr) { if (ch === "{") depth++; else if (ch === "}") { depth--; if (depth === 0) { j++; break; } } }
+        j++;
+      }
+      if (depth !== 0) break;
+      try { const obj = JSON.parse(cleaned.slice(i, j)); if (obj.projectName) projects.push(obj); } catch (_) {}
+      i = j;
+    }
+    return { projects, summary: `Recovered ${projects.length} projects.` };
+  }
+
+  async function scanCountry(country, today) {
+    const sources = country === "Australia"
+      ? [
+          "arena.gov.au","cleanenergyfinancecorp.com.au","energy.gov.au","aemo.com.au",
+          "aemc.gov.au","infrastructure.gov.au","climatechangeauthority.gov.au",
+          "energyco.nsw.gov.au","energy.vic.gov.au","epw.qld.gov.au","energy.queensland.gov.au",
+          "energy.sa.gov.au","demirs.wa.gov.au","energy.tas.gov.au","industry.nt.gov.au",
+          "infrastructure.nsw.gov.au","economicdevelopment.vic.gov.au",
+          "icn.org.au","asx.com.au","cleanenergycouncil.org.au","businesscouncil.com.au",
+          "globalinfrastructurehub.org","infrastructureaustralia.gov.au",
+          "reneweconomy.com.au","pv-magazine.com.au","energymagazine.com.au",
+          "theaustralian.com.au","afr.com","rechargenews.com","windpowermonthly.com",
+          "spglobal.com/commodityinsights","bloombergnef.com","ns-energy.com",
+          "current-news.co.uk","solarpowerworldonline.com","esmmagazine.com",
+          "energymonitor.ai","pv-tech.org",
+        ].join(", ")
+      : [
+          "aneel.gov.br","gov.br/mme","bndes.gov.br","epe.gov.br",
+          "ibama.gov.br","cade.gov.br","desenvolvimento.gov.br",
+          "abeeolica.org.br","absolar.org.br","abh2.org.br","abrace.org.br",
+          "apine.org.br","abgd.com.br",
+          "rechargenews.com","ns-energy.com","pv-magazine.com.br",
+          "energiahoje.com","canalenergia.com.br","portaleienergia.com.br",
+          "epbr.com.br","osetoreletrico.com.br","energiaeambiente.com.br",
+          "convergenciadigital.com.br","agenciabrasil.ebc.com.br",
+          "bloombergnef.com","spglobal.com/commodityinsights",
+          "windpowermonthly.com","pv-tech.org","energymonitor.ai",
+        ].join(", ");
+
+    const sys = `You are a market intelligence analyst for MadePartners — a Quality Solutions provider (QAQC, inspection, asset management, vendor assessment, factory acceptance testing). ISO 9001/14001/45001 certified.
+
+Search the internet for real, current large-scale renewable energy projects in ${country} only.
+Sources to check: ${sources}
+Project types: Solar PV, Wind, BESS, Hydrogen, HV Transmission, REZ.
+
+STRICT EXCLUSION RULES — do NOT include:
+- Any project whose main EPC or equipment procurement was fully completed before 2024
+- Any project already fully under construction with zero remaining open procurement packages
+- Projects where MadePartners has no realistic opportunity to win inspection, QAQC, FAT or supervision work
+- Well-known legacy projects with procurement closed years ago (e.g. Snowy 2.0 main works, early wind farms awarded pre-2023)
+Only include "Awarded" or "Under Construction" projects if specialist sub-packages (HV equipment FAT, QAQC surveillance, commissioning inspection) are still open or imminent.
+
+Return ONLY raw JSON — zero markdown, zero preamble:
+{"projects":[{"projectName":"","location":"","country":"${country}","procurementStart":"","procurementStatus":"","assetTypes":[],"companies":[],"fundingSources":[],"projectValue":"","capacityMW":0,"linkedinContacts":[],"mpEngagementWindow":"","mpServices":[],"priority":"","sourceUrl":"","summary":"","lastUpdated":"${today}"}],"scanSummary":""}
+
+Rules:
+- procurementStatus: exactly one of "Pre-tender","Tender Active","Awarded","Under Construction","Planning"
+- NOTE on "Awarded"/"Under Construction": only include if specialist sub-packages are still open or imminent
+- priority: "High" (tender imminent/active or sub-packages open now), "Medium" (3-18 months out), "Low" (early planning)
+- mpServices: pick from "QAQC Inspection","Vendor Assessment","Factory Acceptance Testing","Site Supervision","Asset Management","Technical Due Diligence"
+- linkedinContacts: job titles to target
+- mpEngagementWindow: specific actionable advice
+- IMPORTANT — MadePartners has deep specialist experience in HV transformers and HV circuit breakers/switchgear FAT and inspection. If a project involves HV transformers, circuit breakers, switchgear, GIS, substations or HV transmission/grid connection, explicitly mention the relevant equipment (e.g. "power transformers", "HV circuit breakers", "GIS switchgear") in the summary AND assetTypes, and lean toward "High" priority. These are MadePartners' strongest opportunities.
+- Keep summary under 40 words
+- Find up to ${country === "Australia" ? "30" : "20"} projects. Real data only.`;
+
+    const resp = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: country === "Australia" ? 12000 : 8000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        system: sys,
+        messages: [{ role: "user", content: `Today is ${today}. Find up to ${country === "Australia" ? "30" : "20"} real renewable energy projects in ${country} with active or upcoming procurement opportunities. EXCLUDE any project with procurement fully closed before 2024. Return ONLY the JSON object specified — no other text.` }],
+      }),
+    }, {
+      retries: 4, baseDelay: 1500,
+      onRetry: (attempt, max, status) => setScanLog(`${country}: API busy (${status}) — retrying (${attempt}/${max})…`),
+    });
+    if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error?.message || `API ${resp.status}`); }
+    const data = await resp.json();
+    const raw = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+    return extractProjects(raw);
+  }
+
+  async function runScan() {
+    setScanning(true); setSelected(null); setScanLog("Initialising intelligence scan…");
+    const today = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+    try {
+      setScanLog("Scanning Australia (1/2)…");
+      const au = await scanCountry("Australia", today);
+      setScanLog(`Australia: ${au.projects.length} found. Scanning Brazil (2/2)…`);
+      const br = await scanCountry("Brazil", today);
+      const all = [...au.projects, ...br.projects].map((p, i) => ({ ...p, _id: i }));
+      const flagged = computeChangeStatus(all, scanned);
+      const date = new Date().toISOString();
+      await saveScanned(flagged, date);
+      const newCount = flagged.filter(p => p._changeStatus === "new").length;
+      const updCount = flagged.filter(p => p._changeStatus === "updated").length;
+      setScanLog(`✓ Scan complete — ${flagged.length} projects (🇦🇺 ${au.projects.length} · 🇧🇷 ${br.projects.length}) · 🆕 ${newCount} new · ↻ ${updCount} updated`);
+    } catch (err) {
+      setScanLog(`⚠ Scan error: ${err.message}`);
+    } finally { setScanning(false); }
+  }
+
+  const pinnedNames = new Set(pinned.map(p => p.projectName.toLowerCase()));
+  const deduped = scanned.filter(p =>
+    !pinnedNames.has(p.projectName.toLowerCase()) &&
+    !deletedNames.has(p.projectName.toLowerCase())
+  );
+  const projects = [...pinned, ...deduped];
+
+  const priorityOrder = { High: 0, Medium: 1, Low: 2 };
+  const displayed = projects
+    .filter(p => filterCountry === "All" || p.country === filterCountry)
+    .filter(p => filterPriority === "All" || p.priority === filterPriority)
+    .filter(p => filterStatus.length === 0 || filterStatus.includes(p.procurementStatus))
+    .filter(p => filterSource === "All" || (filterSource === "Pinned" ? p._pinned : !p._pinned))
+    .filter(p => filterChange === "All" || p._changeStatus === (filterChange === "New" ? "new" : "updated"))
+    .filter(p => !filterHV || hasHVEquipment(p))
+    .filter(p => !filterDC || isDataCentre(p))
+    .sort((a, b) => {
+      if (sortKey === "priority") {
+        if (a._pinned !== b._pinned) return a._pinned ? -1 : 1;
+        const av = priorityOrder[a.priority] ?? 2, bv = priorityOrder[b.priority] ?? 2;
+        if (av !== bv) return sortDir === "asc" ? av - bv : bv - av;
+        // Within same priority, float HV-equipment projects (MP core experience) to the top
+        const ah = hasHVEquipment(a) ? 0 : 1, bh = hasHVEquipment(b) ? 0 : 1;
+        return ah - bh;
+      }
+      let av, bv;
+      if (sortKey === "capacityMW") { av = Number(a.capacityMW) || 0; bv = Number(b.capacityMW) || 0; }
+      else { av = String(a[sortKey] || ""); bv = String(b[sortKey] || ""); }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
 
-  function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function openProject(p){setSelected(p);setTab("detail");}
-  function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
-  const fmt=iso=>iso?new Date(iso).toLocaleString("en-AU",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Unknown";
-  const TD=(e={})=>({padding:"9px 12px",fontFamily:"Arial,sans-serif",fontSize:"12px",borderBottom:"1px solid "+C.border,...e});
-  const hl=(p,f,e={})=>(p._changedFields||[]).includes(f)?{...e,color:C.updatedColor}:e;
-  const ColHead=({label,k,style={}})=>(
-    <th onClick={()=>toggleSort(k)} style={{padding:"10px 12px",textAlign:"left",background:C.yellow,color:C.black,fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap",cursor:"pointer",userSelect:"none",fontFamily:"Arial,sans-serif",...style}}>
-      {label}<span style={{marginLeft:"4px",color:sortKey===k?C.black:"#a88000"}}>{sortKey===k?(sortDir==="asc"?"▲":"▼"):"⇅"}</span>
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  }
+  function resetFilters() {
+    setFilterCountry("All"); setFilterPriority("All"); setFilterStatus([]);
+    setFilterSource("All"); setFilterChange("All"); setFilterHV(false); setFilterDC(false);
+  }
+  const anyFilter = filterCountry !== "All" || filterPriority !== "All" || filterStatus.length > 0 || filterSource !== "All" || filterChange !== "All" || filterHV || filterDC;
+  // Select a project and jump to the detail tab
+  function openProject(p) {
+    setSelected(p);
+    setActiveTab("detail");
+  }
+  function closeDetail() {
+    setSelected(null);
+    if (activeTab === "detail") setActiveTab("table");
+  }
+  function handleSaveModal(data) {
+    if (editTarget) savePinned(pinned.map(p => p.projectName === editTarget.projectName ? data : p));
+    else savePinned([...pinned, data]);
+    setShowModal(false); setEditTarget(null);
+    if (selected?.projectName === editTarget?.projectName) setSelected(data);
+  }
+
+  const fmtDate = iso => iso ? new Date(iso).toLocaleString("en-AU", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Never";
+  const ColHead = ({ label, k, style = {} }) => (
+    <th onClick={() => toggleSort(k)} style={{ padding: "10px 12px", textAlign: "left", background: C.yellow, color: C.black, fontWeight: "bold", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.6px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none", fontFamily: "Arial,sans-serif", ...style }}>
+      {label}<span style={{ marginLeft: "4px", color: sortKey === k ? C.black : "#a88000" }}>{sortKey === k ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}</span>
     </th>
   );
+  const TD = (extra = {}) => ({ padding: "9px 12px", fontFamily: "Arial,sans-serif", fontSize: "12px", borderBottom: `1px solid ${C.border}`, ...extra });
 
-  const auCount=withPins.filter(p=>p.country==="Australia").length;
-  const brCount=withPins.filter(p=>p.country==="Brazil").length;
-  const highCount=withPins.filter(p=>p.priority==="High").length;
-  const hvCount=withPins.filter(hasHVEquipment).length;
-  const newCount=withPins.filter(p=>p._changeStatus==="new").length;
-  const updCount=withPins.filter(p=>p._changeStatus==="updated").length;
-  const pinCount=withPins.filter(p=>p._pinned).length;
+  // Highlight a cell's font in blue if its field changed in the last scan
+  const hl = (p, field, extra = {}) =>
+    (p._changedFields || []).includes(field)
+      ? { ...extra, color: C.updatedColor }
+      : extra;
+
+  const auCount = projects.filter(p => p.country === "Australia").length;
+  const brCount = projects.filter(p => p.country === "Brazil").length;
+  const highCount = projects.filter(p => p.priority === "High").length;
+  const activeCount = projects.filter(p => p.procurementStatus === "Tender Active").length;
+  const pretenderCount = projects.filter(p => p.procurementStatus === "Pre-tender").length;
+  const newCount = projects.filter(p => p._changeStatus === "new").length;
+  const updatedCount = projects.filter(p => p._changeStatus === "updated").length;
+  const hvCount = projects.filter(hasHVEquipment).length;
+  const dcCount = projects.filter(isDataCentre).length;
+
+  const rowBorderColor = (p, isSel) => isSel || p._pinned ? C.yellow
+    : p._changeStatus === "new" ? C.newColor
+    : p._changeStatus === "updated" ? C.updatedColor
+    : null;
 
   return (
-    <div style={{background:C.black,minHeight:"100vh",color:C.white,fontFamily:"Arial,sans-serif"}}>
-      <div style={{background:C.black,borderBottom:"3px solid "+C.yellow,padding:"18px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"16px"}}>
+    <div style={{ background: C.black, minHeight: "100vh", color: C.white, fontFamily: "Arial,sans-serif" }}>
+
+      {/* Header */}
+      <div style={{ background: C.black, borderBottom: `3px solid ${C.yellow}`, padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <div style={{display:"flex",alignItems:"baseline"}}>
-            <span style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:900,fontSize:"28px",color:C.yellow,letterSpacing:"5px"}}>MADE</span>
-            <span style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:900,fontSize:"28px",color:C.white,letterSpacing:"4px"}}>PARTNERS</span>
+          <div style={{ display: "flex", alignItems: "baseline" }}>
+            <span style={{ fontFamily: "'Calibri','Trebuchet MS',Arial,sans-serif", fontWeight: 900, fontSize: "28px", color: C.yellow, letterSpacing: "5px" }}>MADE</span>
+            <span style={{ fontFamily: "'Calibri','Trebuchet MS',Arial,sans-serif", fontWeight: 900, fontSize: "28px", color: C.white, letterSpacing: "4px" }}>PARTNERS</span>
           </div>
-          <div style={{color:"#3a3a3a",fontFamily:"Arial,sans-serif",fontSize:"10px",letterSpacing:"3.5px",textTransform:"uppercase",marginTop:"4px"}}>RENEWABLE ENERGY MARKET INTELLIGENCE · AUSTRALIA & BRAZIL</div>
+          <div style={{ color: "#3a3a3a", fontFamily: "Arial,sans-serif", fontSize: "10px", letterSpacing: "3.5px", textTransform: "uppercase", marginTop: "4px" }}>RENEWABLE ENERGY MARKET INTELLIGENCE · AUSTRALIA & BRAZIL</div>
         </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"1px"}}>Auto-updated weekly · Sundays</div>
-          <div style={{color:"#2e2e2e",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:"#555"}}>{fmt(lastScan)}</span></div>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <button onClick={() => { setEditTarget(null); setShowModal(true); }} style={{ background: "none", border: `1px solid ${C.yellow}`, color: C.yellow, padding: "10px 18px", fontFamily: "Arial,sans-serif", fontWeight: "bold", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1.5px", cursor: "pointer" }}>
+            + ADD PROJECT
+          </button>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+            <button onClick={runScan} disabled={scanning} style={{ background: scanning ? "#1a1a1a" : C.yellow, color: scanning ? "#444" : C.black, border: "none", padding: "12px 30px", fontFamily: "Arial,sans-serif", fontWeight: "bold", fontSize: "12px", textTransform: "uppercase", letterSpacing: "2px", cursor: scanning ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "14px", display: "inline-block", animation: scanning ? "spin 1s linear infinite" : "none" }}>{scanning ? "⟳" : "▶"}</span>
+              {scanning ? "SCANNING…" : "RUN WEEKLY SCAN"}
+            </button>
+            <div style={{ color: "#2e2e2e", fontSize: "11px", fontFamily: "Arial,sans-serif" }}>Last scan: <span style={{ color: "#555" }}>{fmtDate(lastScan)}</span></div>
+          </div>
         </div>
       </div>
 
-      {loading&&<div style={{padding:"60px 28px",textAlign:"center",color:C.yellow,fontFamily:"'Courier New',monospace",fontSize:"13px"}}>Loading intelligence data…</div>}
-      {error&&<div style={{padding:"20px 28px",color:"#e05050",fontFamily:"'Courier New',monospace",fontSize:"12px",background:"#1a0808",borderBottom:"1px solid "+C.border}}>⚠ {error}</div>}
-
-      {!loading&&(
-        <div style={{background:"#060606",padding:"18px 28px",display:"flex",gap:"40px",flexWrap:"wrap",borderBottom:"1px solid "+C.border}}>
-          <StatCard value={withPins.length} label="Total Projects" accent/>
-          <StatCard value={auCount+" 🇦🇺"} label="Australia"/>
-          <StatCard value={brCount+" 🇧🇷"} label="Brazil"/>
-          <StatCard value={"📌 "+pinCount} label="Pinned" accent/>
-          <StatCard value={"⚡ "+hvCount} label="HV Equip" accent/>
-          <StatCard value={highCount} label="High Priority"/>
-          {(newCount>0||updCount>0)&&<><StatCard value={"🆕 "+newCount} label="New This Scan" color={C.newColor}/><StatCard value={"↻ "+updCount} label="Updated This Scan" color={C.updatedColor}/></>}
-        </div>
+      {/* Scan Log */}
+      {scanLog && (
+        <div style={{ background: "#050505", padding: "9px 28px", borderBottom: `1px solid ${C.border}`, fontFamily: "'Courier New',Courier,monospace", fontSize: "11px", color: scanning ? C.yellow : scanLog.startsWith("⚠") ? "#e05050" : "#3a9a3a" }}>{scanLog}</div>
       )}
 
-      {!loading&&(
-        <div style={{background:"#060606",padding:"0 28px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"stretch",flexWrap:"wrap"}}>
-          <div style={{display:"flex"}}>
-            {[{key:"table",label:"PROJECT TABLE"},{key:"timeline",label:"ENGAGEMENT TIMELINE"},{key:"detail",label:"SELECTED PROJECT"}].map(t=>(
-              <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#1e1e1e":"#3a3a3a",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
-                {t.label}{t.key==="detail"&&selected&&<span style={{background:C.yellow,color:C.black,fontSize:"8px",padding:"1px 5px",borderRadius:"2px"}}>1</span>}
-              </button>
-            ))}
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 0",flexWrap:"wrap"}}>
-            {[
-              {val:fCountry,set:setFCountry,opts:["All","Australia","Brazil"],ph:"ALL COUNTRIES"},
-              {val:fPriority,set:setFPriority,opts:["All","High","Medium","Low"],ph:"ALL PRIORITIES"},
-              {val:fStatus,set:setFStatus,opts:["All","Pre-tender","Tender Active","Awarded","Under Construction","Planning"],ph:"ALL STATUSES"},
-              {val:fChange,set:setFChange,opts:["All","New","Updated"],ph:"ALL CHANGES"},
-            ].map((f,i)=>(
-              <select key={i} value={f.val} onChange={e=>f.set(e.target.value)} style={{background:"#0d0d0d",color:"#666",border:"1px solid "+C.border,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
-                {f.opts.map(o=><option key={o} value={o}>{o==="All"?f.ph:o.toUpperCase()}</option>)}
-              </select>
-            ))}
-            <button onClick={()=>setFHV(v=>!v)} style={{background:fHV?C.yellow:"#0d0d0d",color:fHV?C.black:"#666",border:"1px solid "+(fHV?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHV?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚡ HV EQUIP ONLY</button>
-          </div>
-        </div>
-      )}
+      {/* Stats */}
+      <div style={{ background: "#060606", padding: "18px 28px", display: "flex", gap: "40px", flexWrap: "wrap", borderBottom: `1px solid ${C.border}` }}>
+        <StatCard value={projects.length}       label="Total Projects" accent />
+        <StatCard value={`${auCount} 🇦🇺`}      label="Australia" />
+        <StatCard value={`${brCount} 🇧🇷`}      label="Brazil" />
+        <StatCard value={`📌 ${pinned.length}`} label="Pinned" accent />
+        <StatCard value={`⚡ ${hvCount}`}       label="HV Equip" accent />
+        {dcCount > 0 && <StatCard value={`🖥 ${dcCount}`} label="Data Centres" color="#7cc4ff" />}
+        <StatCard value={highCount}             label="High Priority" />
+        <StatCard value={activeCount}           label="Active Tenders" />
+        <StatCard value={pretenderCount}        label="Pre-Tender" />
+        {(newCount > 0 || updatedCount > 0) && (
+          <>
+            <StatCard value={`🆕 ${newCount}`}     label="New This Scan"     color={C.newColor} />
+            <StatCard value={`↻ ${updatedCount}`}  label="Updated This Scan" color={C.updatedColor} />
+          </>
+        )}
+      </div>
 
-      {!loading&&!error&&(
-        <div style={{padding:"24px 28px"}}>
-          {withPins.length===0?(
-            <div style={{textAlign:"center",padding:"100px 20px",color:"#2a2a2a",fontFamily:"Arial,sans-serif"}}>No project data found yet.</div>
-          ):tab==="table"?(
-            <div>
-              <div style={{color:"#333",fontFamily:"Arial,sans-serif",fontSize:"11px",marginBottom:"12px",display:"flex",gap:"16px",flexWrap:"wrap"}}>
-                <span>Showing {displayed.length} of {withPins.length} projects — click a row for details · 📌 pin</span>
-                <span style={{color:C.yellow}}>⚡ HV equip (MP core)</span>
-                <span style={{color:C.newColor}}>🆕 new</span>
-                <span style={{color:C.updatedColor}}>↻ updated</span>
+      {/* Tabs + Filters */}
+      <div style={{ background: "#060606", padding: "0 28px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "stretch", flexWrap: "wrap" }}>
+        <div style={{ display: "flex" }}>
+          {[{ key: "table", label: "PROJECT TABLE" }, { key: "timeline", label: "ENGAGEMENT TIMELINE" }, { key: "detail", label: "SELECTED PROJECT" }].map(t => (
+            <button key={t.key} onClick={() => setActiveTab(t.key)} disabled={t.key === "detail" && !selected} style={{ background: "none", border: "none", borderBottom: activeTab === t.key ? `3px solid ${C.yellow}` : "3px solid transparent", color: activeTab === t.key ? C.yellow : (t.key === "detail" && !selected) ? "#1e1e1e" : "#3a3a3a", fontFamily: "Arial,sans-serif", fontWeight: "bold", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1.5px", padding: "14px 20px", cursor: (t.key === "detail" && !selected) ? "default" : "pointer", marginBottom: "-1px", display: "flex", alignItems: "center", gap: "6px" }}>
+              {t.label}
+              {t.key === "detail" && selected && <span style={{ background: C.yellow, color: C.black, fontSize: "8px", padding: "1px 5px", borderRadius: "2px", letterSpacing: "0.5px" }}>1</span>}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0", flexWrap: "wrap" }}>
+          {[
+            { val: filterCountry,  set: setFilterCountry,  opts: ["All","Australia","Brazil"],       ph: "ALL COUNTRIES" },
+            { val: filterPriority, set: setFilterPriority, opts: ["All","High","Medium","Low"],      ph: "ALL PRIORITIES" },
+            { val: filterSource,   set: setFilterSource,   opts: ["All","Pinned","Scanned"],         ph: "ALL SOURCES" },
+            { val: filterChange,   set: setFilterChange,   opts: ["All","New","Updated"],            ph: "ALL CHANGES" },
+          ].map((f, i) => (
+            <select key={i} value={f.val} onChange={e => f.set(e.target.value)} style={{ background: "#0d0d0d", color: "#666", border: `1px solid ${C.border}`, padding: "6px 10px", fontFamily: "Arial,sans-serif", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.5px", cursor: "pointer" }}>
+              {f.opts.map(o => <option key={o} value={o}>{o === "All" ? f.ph : o.toUpperCase()}</option>)}
+            </select>
+          ))}
+          {/* Multi-select status */}
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setStatusOpen(o => !o)} style={{ background: filterStatus.length ? C.yellow : "#0d0d0d", color: filterStatus.length ? C.black : "#666", border: `1px solid ${filterStatus.length ? C.yellow : C.border}`, padding: "6px 10px", fontFamily: "Arial,sans-serif", fontSize: "10px", fontWeight: filterStatus.length ? "bold" : "normal", textTransform: "uppercase", letterSpacing: "0.5px", cursor: "pointer" }}>
+              {filterStatus.length ? `STATUS (${filterStatus.length})` : "ALL STATUSES"} ▾
+            </button>
+            {statusOpen && (
+              <div style={{ position: "absolute", top: "32px", left: 0, background: "#0d0d0d", border: `1px solid ${C.border}`, zIndex: 50, minWidth: "180px", padding: "6px 0", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}>
+                {["Pre-tender","Tender Active","Awarded","Under Construction","Planning"].map(s => (
+                  <label key={s} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 12px", cursor: "pointer", fontFamily: "Arial,sans-serif", fontSize: "11px", color: filterStatus.includes(s) ? C.yellow : "#888" }}>
+                    <input type="checkbox" checked={filterStatus.includes(s)} onChange={() => setFilterStatus(cur => cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])} style={{ accentColor: C.yellow }} />
+                    {s}
+                  </label>
+                ))}
               </div>
-              <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1100px"}}>
-                  <thead><tr>
-                    <ColHead label="Project Name" k="projectName"/>
-                    <ColHead label="Location" k="location"/>
-                    <ColHead label="Procurement" k="procurementStart" style={{width:"100px"}}/>
-                    <ColHead label="Status" k="procurementStatus" style={{width:"130px"}}/>
-                    <ColHead label="MW" k="capacityMW"/>
-                    <ColHead label="Key Assets" k="assetTypes"/>
-                    <ColHead label="Companies" k="companies"/>
-                    <ColHead label="Engage By" k="mpEngagementWindow"/>
-                    <ColHead label="Priority" k="priority"/>
-                    <th style={{background:C.yellow,padding:"10px 8px",width:"36px"}}/>
-                  </tr></thead>
-                  <tbody>
-                    {displayed.map((p,i)=>{
-                      const sel=selected&&selected.projectName===p.projectName;
-                      const accent=sel||p._pinned?C.yellow:p._changeStatus==="new"?C.newColor:p._changeStatus==="updated"?C.updatedColor:null;
-                      const open=()=>openProject(p);
-                      return (
-                        <tr key={i} style={{background:sel?"#1a1200":p._pinned?"#0a0800":i%2===0?"#070707":C.card,cursor:"pointer",borderLeft:accent?"3px solid "+accent:"3px solid transparent"}}>
-                          <td onClick={open} style={TD({color:C.white,fontWeight:"bold",minWidth:"230px"})}>
-                            <div style={{display:"flex",alignItems:"center",gap:"7px",flexWrap:"wrap"}}>
-                              <button onClick={e=>{e.stopPropagation();pinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{background:"none",border:"none",color:p._pinned?C.yellow:"#777",opacity:p._pinned?1:0.6,fontSize:"14px",cursor:"pointer",padding:0,lineHeight:1}}>📌</button>
-                              <Flag country={p.country}/><span>{p.projectName}</span>{hasHVEquipment(p)&&<HVBadge/>}<ChangeBadge status={p._changeStatus}/>
-                            </div>
-                          </td>
-                          <td onClick={open} style={TD(hl(p,"location",{color:"#777",fontSize:"11px"}))}>{p.location}</td>
-                          <td onClick={open} style={TD(hl(p,"procurementStart",{color:C.yellow,fontWeight:"bold",whiteSpace:"nowrap",padding:"9px 8px"}))}>{p.procurementStart||"TBD"}</td>
-                          <td onClick={open} style={TD(hl(p,"procurementStatus",{whiteSpace:"nowrap"}))}><Badge text={p.procurementStatus} type="status"/></td>
-                          <td onClick={open} style={TD(hl(p,"capacityMW",{color:C.yellow,whiteSpace:"nowrap",textAlign:"right",fontWeight:"bold"}))}>{p.capacityMW?Number(p.capacityMW).toLocaleString():"—"}</td>
-                          <td onClick={open} style={TD({color:"#888",fontSize:"11px"})}>{(p.assetTypes||[]).join(", ")}</td>
-                          <td onClick={open} style={TD({color:"#777",fontSize:"11px"})}>{(p.companies||[]).slice(0,2).join(", ")}{(p.companies||[]).length>2?" +"+(p.companies.length-2):""}</td>
-                          <td onClick={open} style={TD(hl(p,"mpEngagementWindow",{color:"#bbb",fontWeight:"bold",fontSize:"11px",minWidth:"260px"}))}>{p.mpEngagementWindow||"—"}</td>
-                          <td onClick={open} style={TD(hl(p,"priority",{whiteSpace:"nowrap"}))}><Badge text={p.priority} type="priority"/></td>
-                          <td style={TD({padding:"0 8px",textAlign:"center",width:"36px"})}>
-                            <button onClick={e=>{e.stopPropagation();pinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{background:"none",border:"none",color:p._pinned?C.yellow:"#2a2a2a",fontSize:"14px",cursor:"pointer",padding:"4px",lineHeight:1}}>📌</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ):tab==="timeline"?(
-            <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
-          ):(
-            selected?<DetailPanel project={{...selected,_pinned:isPinned(selected)}} onClose={closeDetail} onPinToggle={pinToggle}/>:(
-              <div style={{textAlign:"center",padding:"100px 20px"}}>
-                <div style={{fontSize:"48px",opacity:0.08,marginBottom:"16px"}}>👆</div>
-                <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"14px",color:"#1e1e1e",textTransform:"uppercase",letterSpacing:"3px"}}>NO PROJECT SELECTED</div>
-                <div style={{fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#2a2a2a",marginTop:"10px"}}>Click any project in the <strong style={{color:C.yellow}}>PROJECT TABLE</strong> or <strong style={{color:C.yellow}}>TIMELINE</strong> to view its details here.</div>
-              </div>
-            )
+            )}
+          </div>
+          <button onClick={() => setFilterHV(v => !v)} title="Show only projects with HV transformers / circuit breakers" style={{ background: filterHV ? C.yellow : "#0d0d0d", color: filterHV ? C.black : "#666", border: `1px solid ${filterHV ? C.yellow : C.border}`, padding: "6px 10px", fontFamily: "Arial,sans-serif", fontSize: "10px", fontWeight: filterHV ? "bold" : "normal", textTransform: "uppercase", letterSpacing: "0.5px", cursor: "pointer" }}>
+            ⚡ HV EQUIP ONLY
+          </button>
+          <button onClick={() => setFilterDC(v => !v)} title="Show only data centre projects" style={{ background: filterDC ? "#7cc4ff" : "#0d0d0d", color: filterDC ? C.black : "#666", border: `1px solid ${filterDC ? "#7cc4ff" : C.border}`, padding: "6px 10px", fontFamily: "Arial,sans-serif", fontSize: "10px", fontWeight: filterDC ? "bold" : "normal", textTransform: "uppercase", letterSpacing: "0.5px", cursor: "pointer" }}>
+            🖥 DATA CENTRES ONLY
+          </button>
+          {anyFilter && (
+            <button onClick={resetFilters} style={{ background: "none", border: `1px solid #333`, color: "#999", fontFamily: "Arial,sans-serif", fontSize: "10px", padding: "6px 12px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.5px" }}>✕ RESET FILTERS</button>
           )}
         </div>
-      )}
-
-      <div style={{borderTop:"1px solid "+C.border,padding:"14px 28px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
-        <span style={{color:"#222"}}>Commercial in Confidence · MADEPARTNERS Quality Solutions · ISO 9001 / 14001 / 45001</span>
-        <span style={{color:C.yellow,letterSpacing:"1px"}}>WWW.MADEPARTNERS.COM</span>
       </div>
+
+      {/* Main Content */}
+      <div style={{ padding: "24px 28px" }}>
+        {projects.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "120px 20px" }}>
+            <div style={{ fontSize: "60px", opacity: 0.08, marginBottom: "20px", lineHeight: 1 }}>⚡</div>
+            <div style={{ fontFamily: "'Calibri','Trebuchet MS',Arial,sans-serif", fontWeight: "bold", fontSize: "16px", color: "#1e1e1e", textTransform: "uppercase", letterSpacing: "4px" }}>NO INTELLIGENCE DATA</div>
+            <div style={{ fontFamily: "Arial,sans-serif", fontSize: "13px", color: "#2a2a2a", marginTop: "12px", lineHeight: "1.7" }}>
+              Click <strong style={{ color: C.yellow }}>RUN WEEKLY SCAN</strong> to search for renewable energy project opportunities,<br />or <strong style={{ color: C.yellow }}>+ ADD PROJECT</strong> to manually add a known target.
+            </div>
+          </div>
+        ) : activeTab === "table" ? (
+          <div>
+            <div style={{ color: "#333", fontFamily: "Arial,sans-serif", fontSize: "11px", marginBottom: "12px", display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
+              <span>Showing <span style={{ color: "#666" }}>{displayed.length}</span> of {projects.length} projects{displayed.length < projects.length && " (filtered)"} — click a row for details · 📌 pin/unpin · 🗑 remove</span>
+              <span style={{ color: C.yellow }}>⚡ HV equip (MP core)</span>
+              <span style={{ color: "#7cc4ff" }}>🖥 data centre</span>
+              <span style={{ color: C.newColor }}>🆕 new this scan</span>
+              <span style={{ color: C.updatedColor }}>↻ updated this scan</span>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1170px" }}>
+                <thead>
+                  <tr>
+                    <ColHead label="Project Name"  k="projectName" />
+                    <ColHead label="Location"      k="location" />
+                    <ColHead label="Procurement"   k="procurementStart" style={{ padding: "10px 8px", width: "100px" }} />
+                    <ColHead label="Status"        k="procurementStatus" style={{ width: "130px" }} />
+                    <ColHead label="MW"            k="capacityMW" />
+                    <ColHead label="Key Assets"    k="assetTypes" />
+                    <ColHead label="Companies"     k="companies" />
+                    <ColHead label="Funding"       k="fundingSources" />
+                    <ColHead label="MP Services"   k="mpServices" />
+                    <ColHead label="Engage By"     k="mpEngagementWindow" />
+                    <ColHead label="Priority"      k="priority" />
+                    <th style={{ background: C.yellow, padding: "10px 8px", width: "36px" }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayed.map((p, i) => {
+                    const isSel = selected?.projectName === p.projectName;
+                    const accent = rowBorderColor(p, isSel);
+                    const open = () => openProject(p);
+                    return (
+                      <tr key={i}
+                        style={{ background: isSel ? "#1a1200" : p._pinned ? "#0a0800" : i % 2 === 0 ? "#070707" : C.card, cursor: "pointer", borderLeft: accent ? `3px solid ${accent}` : "3px solid transparent", transition: "background 0.1s" }}
+                        onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = "#111"; }}
+                        onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = p._pinned ? "#0a0800" : i % 2 === 0 ? "#070707" : C.card; }}
+                      >
+                        <td onClick={open} style={TD({ color: C.white, fontWeight: "bold", minWidth: "230px" })}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap" }}>
+                            <button onClick={e => { e.stopPropagation(); handlePinToggle(p); }} title={p._pinned ? "Unpin project" : "Pin project"}
+                              style={{ background: "none", border: "none", color: p._pinned ? C.yellow : "#777", opacity: p._pinned ? 1 : 0.6, fontSize: "14px", cursor: "pointer", padding: "0", lineHeight: 1, transition: "color 0.15s, opacity 0.15s, transform 0.1s" }}
+                              onMouseEnter={e => { e.currentTarget.style.color = C.yellow; e.currentTarget.style.opacity = 1; e.currentTarget.style.transform = "scale(1.25)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.color = p._pinned ? C.yellow : "#777"; e.currentTarget.style.opacity = p._pinned ? 1 : 0.6; e.currentTarget.style.transform = "scale(1)"; }}>📌</button>
+                            <Flag country={p.country} />
+                            <span>{p.projectName}</span>
+                            {hasHVEquipment(p) && <HVBadge />}
+                            {isDataCentre(p) && <DCBadge />}
+                            <ChangeBadge status={p._changeStatus} />
+                          </div>
+                        </td>
+                        <td onClick={open} style={TD(hl(p, "location", { color: "#777", minWidth: "120px", fontSize: "11px" }))}>{p.location}</td>
+                        <td onClick={open} style={TD(hl(p, "procurementStart", { color: C.yellow, fontWeight: "bold", whiteSpace: "nowrap", padding: "9px 8px", width: "100px" }))}>{p.procurementStart || "TBD"}</td>
+                        <td onClick={open} style={TD(hl(p, "procurementStatus", { whiteSpace: "nowrap", width: "130px" }))}><Badge text={p.procurementStatus} type="status" /></td>
+                        <td onClick={open} style={TD(hl(p, "capacityMW", { color: C.yellow, whiteSpace: "nowrap", textAlign: "right", fontWeight: "bold" }))}>{p.capacityMW ? Number(p.capacityMW).toLocaleString() : "—"}</td>
+                        <td onClick={open} style={TD({ color: "#888", minWidth: "150px", fontSize: "11px" })}>{(p.assetTypes || []).join(", ")}</td>
+                        <td onClick={open} style={TD({ color: "#777", minWidth: "160px", fontSize: "11px" })}>
+                          {(p.companies || []).slice(0, 2).join(", ")}
+                          {(p.companies || []).length > 2 ? <span style={{ color: "#444" }}> +{p.companies.length - 2}</span> : ""}
+                        </td>
+                        <td onClick={open} style={TD({ color: "#666", fontSize: "11px" })}>{(p.fundingSources || []).join(", ")}</td>
+                        <td onClick={open} style={TD({ color: "#777", minWidth: "140px", fontSize: "11px" })}>
+                          {(p.mpServices || []).slice(0, 2).join(", ")}
+                          {(p.mpServices || []).length > 2 ? <span style={{ color: "#444" }}> +{p.mpServices.length - 2}</span> : ""}
+                        </td>
+                        <td onClick={open} style={TD(hl(p, "mpEngagementWindow", { color: "#bbb", minWidth: "280px", fontWeight: "bold", fontSize: "11px" }))}>{p.mpEngagementWindow || "—"}</td>
+                        <td onClick={open} style={TD(hl(p, "priority", { whiteSpace: "nowrap" }))}><Badge text={p.priority} type="priority" /></td>
+                        <td style={TD({ padding: "0 8px", textAlign: "center", width: "36px", whiteSpace: "nowrap" })}>
+                          <button onClick={e => { e.stopPropagation(); handleDelete(p); }} title="Remove project"
+                            style={{ background: "none", border: "none", color: "#2a2a2a", fontSize: "15px", cursor: "pointer", padding: "4px", lineHeight: 1, transition: "color 0.15s" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#cc3333"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#2a2a2a"}>🗑</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : activeTab === "timeline" ? (
+          <div>
+            <TimelineView projects={displayed} onSelect={p => openProject(p)} selected={selected} onDelete={handleDelete} onPinToggle={handlePinToggle} />
+          </div>
+        ) : (
+          /* ── Selected Project tab ── */
+          selected ? (
+            <DetailPanel project={selected} onClose={closeDetail} onEdit={p => { setEditTarget(p); setShowModal(true); }} onPinToggle={handlePinToggle} />
+          ) : (
+            <div style={{ textAlign: "center", padding: "100px 20px" }}>
+              <div style={{ fontSize: "48px", opacity: 0.08, marginBottom: "16px", lineHeight: 1 }}>👆</div>
+              <div style={{ fontFamily: "'Calibri','Trebuchet MS',Arial,sans-serif", fontWeight: "bold", fontSize: "14px", color: "#1e1e1e", textTransform: "uppercase", letterSpacing: "3px" }}>NO PROJECT SELECTED</div>
+              <div style={{ fontFamily: "Arial,sans-serif", fontSize: "12px", color: "#2a2a2a", marginTop: "10px" }}>
+                Click any project in the <strong style={{ color: C.yellow }}>PROJECT TABLE</strong> or <strong style={{ color: C.yellow }}>TIMELINE</strong> to view its details here.
+              </div>
+            </div>
+          )
+        )}
+      </div>
+
+      {/* Footer */}
+      <div style={{ borderTop: `1px solid ${C.border}`, padding: "14px 28px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", fontFamily: "Arial,sans-serif", fontSize: "10px" }}>
+        <span style={{ color: "#222" }}>Commercial in Confidence · MADEPARTNERS Quality Solutions · ISO 9001 / 14001 / 45001</span>
+        <span style={{ color: C.yellow, letterSpacing: "1px" }}>WWW.MADEPARTNERS.COM</span>
+      </div>
+
+      {showModal && <PinnedModal initial={editTarget} onSave={handleSaveModal} onClose={() => { setShowModal(false); setEditTarget(null); }} />}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("mp-root")).render(<App/>);
-</script>
-</body>
-</html>
