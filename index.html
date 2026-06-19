@@ -31,6 +31,7 @@ const C = {
   yellow:"#FDB422", black:"#000000", white:"#FFFFFF",
   card:"#0d0d0d", border:"#1e1e1e", muted:"#444444",
   newColor:"#4ADE80", updatedColor:"#38BDF8",
+  pinActive:"#FF5CA8", // bright pink — clearly distinct from faded grey unpinned pin
 };
 
 function hasHVEquipment(p){
@@ -105,7 +106,7 @@ function DetailPanel({project:p,onClose,onPinToggle}){
       <div style={{background:C.yellow,padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
         <div style={{display:"flex",alignItems:"center",gap:"12px",flexWrap:"wrap"}}>
           <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"12px",textTransform:"uppercase",letterSpacing:"1.5px",color:C.black}}>PROJECT DETAIL — {(p.projectName||"").toUpperCase()}</div>
-          {p._pinned&&<span style={{background:C.black,color:C.yellow,fontSize:"9px",padding:"2px 7px",fontFamily:"Arial,sans-serif",fontWeight:"bold",letterSpacing:"1px"}}>📌 PINNED</span>}
+          {p._pinned&&<span style={{background:C.black,color:C.pinActive,fontSize:"9px",padding:"2px 7px",fontFamily:"Arial,sans-serif",fontWeight:"bold",letterSpacing:"1px"}}>📌 PINNED</span>}
           {hasHVEquipment(p)&&<HVBadge/>}
           {isDataCentre(p)&&<DCBadge/>}
           <ChangeBadge status={p._changeStatus}/>
@@ -161,55 +162,59 @@ function DetailPanel({project:p,onClose,onPinToggle}){
 }
 
 function TimelineView({projects,onSelect,selected,onPinToggle}){
-  // Buckets ordered by urgency — keyed on mpEngagementWindow END date (today ≈ H1 2026)
-  const buckets=["🚨 Act Now (Window ≤H1 2026)","H2 2026","H1 2027","H2 2027","2028+","TBD"];
-
-  // Parse first H1/H2 YYYY token from a string
-  function parseH(str){
-    const m=(str||"").match(/H([12])\s*(\d{4})/i);
-    return m?{h:+m[1],year:+m[2]}:null;
-  }
-
+  const buckets=["Now / Immediate","Q1 2025","Q2 2025","Q3 2025","Q4 2025","Q1 2026","Q2 2026","Q3 2026","Q4 2026","H1 2027","H2 2027","2028+","TBD"];
+  // Parse a procurement string into a sortable bucket. Handles "Q3 2024", "H1 2025",
+  // ranges like "H2 2024 - H2 2027" (uses the START), and "now/immediate".
   const assign=(p)=>{
-    const ew=(p.mpEngagementWindow||"").trim();
-    if(!ew||/^(tbd|unknown|review procurement timeline)$/i.test(ew))return"TBD";
-    // Extract ALL H-tokens; use the LAST one as the end of the window
-    const tokens=(ew.match(/H[12]\s*\d{4}/gi)||[]);
-    const end=tokens.length?parseH(tokens[tokens.length-1]):null;
-    if(!end)return"TBD";
-    // Bucket by end date relative to today (H1 2026 = Jan–Jun 2026)
-    if(end.year<2026||(end.year===2026&&end.h<=1))return"🚨 Act Now (Window ≤H1 2026)";
-    if(end.year===2026)return"H2 2026";
-    if(end.year===2027&&end.h===1)return"H1 2027";
-    if(end.year===2027)return"H2 2027";
-    return"2028+";
+    let ps=(p.procurementStart||"").toLowerCase().trim();
+    if(!ps||ps==="tbd"||ps==="unknown")return "TBD";
+    if(ps.includes("now")||ps.includes("immediate")||ps.includes("urgent"))return "Now / Immediate";
+    // Take the part before a range dash as the start
+    ps=ps.split(/[-–—]/)[0].trim();
+    // Extract year
+    const ym=ps.match(/(20\d{2})/);
+    if(!ym)return "TBD";
+    const year=parseInt(ym[1],10);
+    // Quarter formats: Q1..Q4
+    const qm=ps.match(/q([1-4])/);
+    if(qm){
+      const q=qm[1];
+      if(year>=2028)return "2028+";
+      const label="Q"+q+" "+year;
+      return buckets.includes(label)?label:(year>=2027?"H1 2027":"TBD");
+    }
+    // Half-year formats: H1 / H2 (also "first half"/"second half")
+    const hm=ps.match(/h([12])/)||(ps.includes("first half")?["","1"]:ps.includes("second half")?["","2"]:null);
+    if(hm){
+      const h=hm[1];
+      if(year>=2028)return "2028+";
+      if(year===2027)return h==="1"?"H1 2027":"H2 2027";
+      // Map H1 -> Q1, H2 -> Q3 of that year for 2025/2026 columns
+      const q=h==="1"?"Q1":"Q3";
+      const label=q+" "+year;
+      return buckets.includes(label)?label:"TBD";
+    }
+    // Bare year only
+    if(year>=2028)return "2028+";
+    if(year===2027)return "H1 2027";
+    const bareLabel="Q1 "+year;
+    return buckets.includes(bareLabel)?bareLabel:"TBD";
   };
-
   const grouped={};buckets.forEach(b=>grouped[b]=[]);
   projects.forEach(p=>grouped[assign(p)].push(p));
   const active=buckets.filter(b=>grouped[b].length>0);
-
-  // Left-border accent colour per project
-  const bc=(p)=>p._pinned?C.yellow:p._changeStatus==="new"?C.newColor:p._changeStatus==="updated"?C.updatedColor:p.priority==="High"?C.yellow:p.priority==="Medium"?"#444":"#222";
-
-  // Bucket label colours
-  const bucketColor=(bucket,bi)=>{
-    if(bucket.startsWith("🚨"))return"#ff5555";
-    if(bi===0)return C.yellow;
-    return"#777";
-  };
-
+  const bc=(p)=>p._pinned?C.pinActive:p._changeStatus==="new"?C.newColor:p._changeStatus==="updated"?C.updatedColor:p.priority==="High"?C.yellow:p.priority==="Medium"?"#444":"#222";
   return (
     <div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY WHEN THE OUTREACH WINDOW CLOSES · TODAY H1 2026</div>
+      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>MADEPARTNERS ENGAGEMENT TIMELINE — RECOMMENDED OUTREACH WINDOWS BY PROCUREMENT PHASE</div>
       <div style={{position:"relative"}}>
-        <div style={{position:"absolute",left:"130px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, #ff5555, "+C.yellow+", #222)"}}/>
+        <div style={{position:"absolute",left:"99px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, "+C.yellow+", #222)"}}/>
         {active.map((bucket,bi)=>(
           <div key={bucket} style={{display:"flex",marginBottom:"20px"}}>
-            <div style={{width:"131px",minWidth:"131px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative"}}>
-              <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"11px",color:bucketColor(bucket,bi),textTransform:"uppercase",lineHeight:1.3}}>{bucket}</div>
+            <div style={{width:"100px",minWidth:"100px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative"}}>
+              <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"12px",color:bi===0?C.yellow:"#777",textTransform:"uppercase",lineHeight:1.2}}>{bucket}</div>
               <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#333",marginTop:"3px"}}>{grouped[bucket].length} project{grouped[bucket].length!==1?"s":""}</div>
-              <div style={{position:"absolute",right:"-7px",top:"15px",width:"12px",height:"12px",borderRadius:"50%",background:bucket.startsWith("🚨")?"#ff5555":bi===0?C.yellow:C.border,border:bi===0?"none":"2px solid "+C.muted,zIndex:1}}/>
+              <div style={{position:"absolute",right:"-7px",top:"15px",width:"12px",height:"12px",borderRadius:"50%",background:bi===0?C.yellow:C.border,border:bi===0?"none":"2px solid "+C.muted,zIndex:1}}/>
             </div>
             <div style={{flex:1,paddingLeft:"24px",display:"flex",flexDirection:"column",gap:"8px"}}>
               {grouped[bucket].map((p,pi)=>(
@@ -218,7 +223,7 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
                     <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px"}}>
                       <div style={{flex:1}}>
                         <div style={{color:C.white,fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"13px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-                          <button onClick={e=>{e.stopPropagation();onPinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{background:"none",border:"none",color:p._pinned?C.yellow:"#777",opacity:p._pinned?1:0.6,fontSize:"13px",cursor:"pointer",padding:0,lineHeight:1}}>📌</button>
+                          <button onClick={e=>{e.stopPropagation();onPinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{background:"none",border:"none",color:p._pinned?C.pinActive:"#777",opacity:p._pinned?1:0.55,fontSize:"13px",cursor:"pointer",padding:0,lineHeight:1,filter:p._pinned?"drop-shadow(0 0 3px "+C.pinActive+")":"none"}}>📌</button>
                           <Flag country={p.country}/> {p.projectName}
                           {hasHVEquipment(p)&&<HVBadge/>}
                           {isDataCentre(p)&&<DCBadge/>}
@@ -296,6 +301,21 @@ function App(){
         if(av!==bv)return sortDir==="asc"?av-bv:bv-av;
         return (hasHVEquipment(a)?0:1)-(hasHVEquipment(b)?0:1);
       }
+      if(sortKey==="mpEngagementWindow"){
+        // Urgency-aware: "immediate / now / engage now" first, then by timing keywords
+        const rank=(s)=>{
+          const t=(s||"").toLowerCase();
+          if(/immediate|engage now|\bnow\b|urgent|asap/.test(t))return 0;
+          const m=t.match(/(\d+)\s*month/);if(m)return 1+parseInt(m[1],10)/100;
+          if(/q[1-4]\s*20\d{2}|h[12]\s*20\d{2}/.test(t))return 5;
+          if(!t||t==="—")return 999;
+          return 50;
+        };
+        const ar=rank(a.mpEngagementWindow),br=rank(b.mpEngagementWindow);
+        if(ar!==br)return sortDir==="asc"?ar-br:br-ar;
+        const as=String(a.mpEngagementWindow||""),bs=String(b.mpEngagementWindow||"");
+        return sortDir==="asc"?as.localeCompare(bs):bs.localeCompare(as);
+      }
       let av,bv;
       if(sortKey==="capacityMW"){av=Number(a.capacityMW)||0;bv=Number(b.capacityMW)||0;}
       else{av=String(a[sortKey]||"");bv=String(b[sortKey]||"");}
@@ -309,7 +329,12 @@ function App(){
   const anyFilter=fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fHV||fDC;
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
-  const fmt=iso=>iso?new Date(iso).toLocaleString("en-AU",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Unknown";
+  const fmt=iso=>{
+    if(!iso)return "Unknown";
+    const d=new Date(iso);
+    if(isNaN(d.getTime()))return String(iso); // show raw value instead of "Invalid Date"
+    return d.toLocaleString("en-AU",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  };
   const TD=(e={})=>({padding:"9px 12px",fontFamily:"Arial,sans-serif",fontSize:"12px",borderBottom:"1px solid "+C.border,...e});
   const hl=(p,f,e={})=>(p._changedFields||[]).includes(f)?{...e,color:C.updatedColor}:e;
   const ColHead=({label,k,style={}})=>(
@@ -418,7 +443,7 @@ function App(){
                   <thead><tr>
                     <ColHead label="Project Name" k="projectName"/>
                     <ColHead label="Location" k="location"/>
-                    <ColHead label="Procurement" k="procurementStart" style={{width:"100px"}}/>
+                    <ColHead label="Procurement" k="procurementStart" style={{width:"110px"}}/>
                     <ColHead label="Status" k="procurementStatus" style={{width:"130px"}}/>
                     <ColHead label="MW" k="capacityMW"/>
                     <ColHead label="Key Assets" k="assetTypes"/>
@@ -435,12 +460,12 @@ function App(){
                         <tr key={i} style={{background:sel?"#1a1200":p._pinned?"#0a0800":i%2===0?"#070707":C.card,cursor:"pointer",borderLeft:accent?"3px solid "+accent:"3px solid transparent"}}>
                           <td onClick={open} style={TD({color:C.white,fontWeight:"bold",minWidth:"230px"})}>
                             <div style={{display:"flex",alignItems:"center",gap:"7px",flexWrap:"wrap"}}>
-                              <button onClick={e=>{e.stopPropagation();pinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{background:"none",border:"none",color:p._pinned?C.yellow:"#777",opacity:p._pinned?1:0.6,fontSize:"14px",cursor:"pointer",padding:0,lineHeight:1}}>📌</button>
+                              <button onClick={e=>{e.stopPropagation();pinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{background:"none",border:"none",color:p._pinned?C.pinActive:"#777",opacity:p._pinned?1:0.55,fontSize:p._pinned?"15px":"14px",cursor:"pointer",padding:0,lineHeight:1,filter:p._pinned?"drop-shadow(0 0 3px "+C.pinActive+")":"none"}}>📌</button>
                               <Flag country={p.country}/><span>{p.projectName}</span>{hasHVEquipment(p)&&<HVBadge/>}{isDataCentre(p)&&<DCBadge/>}<ChangeBadge status={p._changeStatus}/>
                             </div>
                           </td>
                           <td onClick={open} style={TD(hl(p,"location",{color:"#777",fontSize:"11px"}))}>{p.location}</td>
-                          <td onClick={open} style={TD(hl(p,"procurementStart",{color:C.yellow,fontWeight:"bold",whiteSpace:"nowrap",padding:"9px 8px"}))}>{p.procurementStart||"TBD"}</td>
+                          <td onClick={open} style={TD(hl(p,"procurementStart",{color:C.yellow,fontWeight:"bold",padding:"9px 8px",width:"110px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3}))}>{p.procurementStart||"TBD"}</td>
                           <td onClick={open} style={TD(hl(p,"procurementStatus",{width:"160px"}))}><Badge text={p.procurementStatus} type="status"/></td>
                           <td onClick={open} style={TD(hl(p,"capacityMW",{color:C.yellow,whiteSpace:"nowrap",textAlign:"right",fontWeight:"bold"}))}>{p.capacityMW?Number(p.capacityMW).toLocaleString():"—"}</td>
                           <td onClick={open} style={TD({color:"#888",fontSize:"11px"})}>{(p.assetTypes||[]).join(", ")}</td>
