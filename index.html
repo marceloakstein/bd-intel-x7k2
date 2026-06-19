@@ -161,30 +161,55 @@ function DetailPanel({project:p,onClose,onPinToggle}){
 }
 
 function TimelineView({projects,onSelect,selected,onPinToggle}){
-  const buckets=["Now / Immediate","Q3 2025","Q4 2025","Q1 2026","Q2 2026","Q3 2026","Q4 2026","2027+","TBD"];
+  // Buckets ordered by urgency — keyed on mpEngagementWindow END date (today ≈ H1 2026)
+  const buckets=["🚨 Act Now (Window ≤H1 2026)","H2 2026","H1 2027","H2 2027","2028+","TBD"];
+
+  // Parse first H1/H2 YYYY token from a string
+  function parseH(str){
+    const m=(str||"").match(/H([12])\s*(\d{4})/i);
+    return m?{h:+m[1],year:+m[2]}:null;
+  }
+
   const assign=(p)=>{
-    const ps=(p.procurementStart||"").toLowerCase();
-    if(!ps||ps==="tbd"||ps==="unknown")return "TBD";
-    if(ps.includes("now")||ps.includes("immediate")||ps.includes("urgent"))return "Now / Immediate";
-    for(const b of buckets){if(b==="Now / Immediate"||b==="TBD"||b==="2027+")continue;if(ps.includes(b.toLowerCase()))return b;}
-    if(ps.includes("2027")||ps.includes("2028")||ps.includes("2029"))return "2027+";
-    return "TBD";
+    const ew=(p.mpEngagementWindow||"").trim();
+    if(!ew||/^(tbd|unknown|review procurement timeline)$/i.test(ew))return"TBD";
+    // Extract ALL H-tokens; use the LAST one as the end of the window
+    const tokens=(ew.match(/H[12]\s*\d{4}/gi)||[]);
+    const end=tokens.length?parseH(tokens[tokens.length-1]):null;
+    if(!end)return"TBD";
+    // Bucket by end date relative to today (H1 2026 = Jan–Jun 2026)
+    if(end.year<2026||(end.year===2026&&end.h<=1))return"🚨 Act Now (Window ≤H1 2026)";
+    if(end.year===2026)return"H2 2026";
+    if(end.year===2027&&end.h===1)return"H1 2027";
+    if(end.year===2027)return"H2 2027";
+    return"2028+";
   };
+
   const grouped={};buckets.forEach(b=>grouped[b]=[]);
   projects.forEach(p=>grouped[assign(p)].push(p));
   const active=buckets.filter(b=>grouped[b].length>0);
+
+  // Left-border accent colour per project
   const bc=(p)=>p._pinned?C.yellow:p._changeStatus==="new"?C.newColor:p._changeStatus==="updated"?C.updatedColor:p.priority==="High"?C.yellow:p.priority==="Medium"?"#444":"#222";
+
+  // Bucket label colours
+  const bucketColor=(bucket,bi)=>{
+    if(bucket.startsWith("🚨"))return"#ff5555";
+    if(bi===0)return C.yellow;
+    return"#777";
+  };
+
   return (
     <div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>MADEPARTNERS ENGAGEMENT TIMELINE — RECOMMENDED OUTREACH WINDOWS BY PROCUREMENT PHASE</div>
+      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY WHEN THE OUTREACH WINDOW CLOSES · TODAY H1 2026</div>
       <div style={{position:"relative"}}>
-        <div style={{position:"absolute",left:"99px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, "+C.yellow+", #222)"}}/>
+        <div style={{position:"absolute",left:"130px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, #ff5555, "+C.yellow+", #222)"}}/>
         {active.map((bucket,bi)=>(
           <div key={bucket} style={{display:"flex",marginBottom:"20px"}}>
-            <div style={{width:"100px",minWidth:"100px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative"}}>
-              <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"12px",color:bi===0?C.yellow:"#777",textTransform:"uppercase",lineHeight:1.2}}>{bucket}</div>
+            <div style={{width:"131px",minWidth:"131px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative"}}>
+              <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"11px",color:bucketColor(bucket,bi),textTransform:"uppercase",lineHeight:1.3}}>{bucket}</div>
               <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#333",marginTop:"3px"}}>{grouped[bucket].length} project{grouped[bucket].length!==1?"s":""}</div>
-              <div style={{position:"absolute",right:"-7px",top:"15px",width:"12px",height:"12px",borderRadius:"50%",background:bi===0?C.yellow:C.border,border:bi===0?"none":"2px solid "+C.muted,zIndex:1}}/>
+              <div style={{position:"absolute",right:"-7px",top:"15px",width:"12px",height:"12px",borderRadius:"50%",background:bucket.startsWith("🚨")?"#ff5555":bi===0?C.yellow:C.border,border:bi===0?"none":"2px solid "+C.muted,zIndex:1}}/>
             </div>
             <div style={{flex:1,paddingLeft:"24px",display:"flex",flexDirection:"column",gap:"8px"}}>
               {grouped[bucket].map((p,pi)=>(
