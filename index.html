@@ -448,19 +448,18 @@ function App(){
                 <span style={{color:C.updatedColor}}>↻ updated</span>
               </div>
               <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1100px",tableLayout:"fixed"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1040px",tableLayout:"fixed"}}>
                   <thead><tr>
-                    <ColHead label="Project Name" k="projectName" style={{width:"190px"}}/>
-                    <ColHead label="Location" k="location" style={{width:"110px"}}/>
-                    <ColHead label="Procure." k="procurementStart" style={{width:"75px"}}/>
-                    <ColHead label="Status" k="procurementStatus" style={{width:"105px"}}/>
-                    <ColHead label="MW" k="capacityMW" style={{width:"55px"}}/>
-                    <ColHead label="Key Assets" k="assetTypes" style={{width:"110px"}}/>
-                    <ColHead label="Owner / Developer" k="owner" style={{width:"120px"}}/>
-                    <ColHead label="EPC" k="epcContractor" style={{width:"110px"}}/>
-                    <ColHead label="Financiers" k="financiers" style={{width:"120px"}}/>
-                    <ColHead label="Engage By" k="mpEngagementWindow" style={{width:"120px"}}/>
-                    <ColHead label="Pri." k="priority" style={{width:"60px"}}/>
+                    <ColHead label="Project Name" k="projectName" style={{width:"200px"}}/>
+                    <ColHead label="Location" k="location" style={{width:"115px"}}/>
+                    <ColHead label="Procure." k="procurementStart" style={{width:"78px"}}/>
+                    <ColHead label="Status" k="procurementStatus" style={{width:"110px"}}/>
+                    <ColHead label="MW" k="capacityMW" style={{width:"58px"}}/>
+                    <ColHead label="Key Assets" k="assetTypes" style={{width:"120px"}}/>
+                    <ColHead label="Owner / Developer" k="owner" style={{width:"130px"}}/>
+                    <ColHead label="EPC" k="epcContractor" style={{width:"120px"}}/>
+                    <ColHead label="Engage By" k="mpEngagementWindow" style={{width:"130px"}}/>
+                    <ColHead label="Pri." k="priority" style={{width:"62px"}}/>
                   </tr></thead>
                   <tbody>
                     {displayed.map((p,i)=>{
@@ -482,7 +481,6 @@ function App(){
                           <td onClick={open} style={TD({color:"#888",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{(p.assetTypes||[]).join(", ")}</td>
                           <td onClick={open} style={TD({color:"#aaa",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.owner)||(p.owner)|| (p.companies&&!p.epcContractor&&!p.financiers?coList(p.companies):"")||"—"}</td>
                           <td onClick={open} style={TD({color:"#999",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.epcContractor)||"—"}</td>
-                          <td onClick={open} style={TD({color:"#888",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.financiers||p.fundingSources)||"—"}</td>
                           <td onClick={open} style={TD(hl(p,"mpEngagementWindow",{color:"#bbb",fontWeight:"bold",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3}))}>{p.mpEngagementWindow||"—"}</td>
                           <td onClick={open} style={TD(hl(p,"priority",{}))}><Badge text={p.priority} type="priority"/></td>
                         </tr>
