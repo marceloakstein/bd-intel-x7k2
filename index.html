@@ -64,9 +64,21 @@ function Badge({text,type}){
     status_UnderConstruction:{bg:"#200e00",color:"#ff9940",border:"1px solid #ff9940"},
     status_Planning:{bg:"#151515",color:"#666",border:"1px solid #2a2a2a"},
   };
-  const k=type+"_"+(text||"").replace(/[\s\-\/]/g,"");
-  const s=map[k]||{bg:"#1a1a1a",color:"#666",border:"1px solid #2a2a2a"};
-  return <span style={{background:s.bg,color:s.color,border:s.border,padding:"2px 8px",fontSize:"10px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>{text}</span>;
+  // Match on the leading status keyword so verbose free-text still colours correctly
+  const raw=(text||"");
+  const norm=raw.replace(/[\s\-\/]/g,"");
+  let key=type+"_"+norm;
+  if(type==="status"&&!map[key]){
+    const low=raw.toLowerCase();
+    if(low.startsWith("pre-tender")||low.startsWith("pretender"))key="status_PreTender";
+    else if(low.startsWith("tender active"))key="status_TenderActive";
+    else if(low.startsWith("awarded"))key="status_Awarded";
+    else if(low.startsWith("under construction"))key="status_UnderConstruction";
+    else if(low.startsWith("planning"))key="status_Planning";
+  }
+  const s=map[key]||{bg:"#1a1a1a",color:"#666",border:"1px solid #2a2a2a"};
+  const isStatus=type==="status";
+  return <span title={raw} style={{background:s.bg,color:s.color,border:s.border,padding:"2px 8px",fontSize:"10px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",lineHeight:1.25,maxWidth:isStatus?"150px":"none",whiteSpace:isStatus?"normal":"nowrap",overflowWrap:isStatus?"break-word":"normal"}}>{text}</span>;
 }
 function HVBadge(){return <span title="HV transformers / circuit breakers — MP core experience" style={{background:"#2a1500",color:C.yellow,border:"1px solid "+C.yellow,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>⚡ HV EQUIP</span>;}
 function DCBadge(){return <span title="Data centre — grid connection, substation & transmission opportunity" style={{background:"#0a1a2a",color:"#7cc4ff",border:"1px solid #7cc4ff",padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>🖥 DATA CENTRE</span>;}
@@ -404,7 +416,7 @@ function App(){
                           </td>
                           <td onClick={open} style={TD(hl(p,"location",{color:"#777",fontSize:"11px"}))}>{p.location}</td>
                           <td onClick={open} style={TD(hl(p,"procurementStart",{color:C.yellow,fontWeight:"bold",whiteSpace:"nowrap",padding:"9px 8px"}))}>{p.procurementStart||"TBD"}</td>
-                          <td onClick={open} style={TD(hl(p,"procurementStatus",{whiteSpace:"nowrap"}))}><Badge text={p.procurementStatus} type="status"/></td>
+                          <td onClick={open} style={TD(hl(p,"procurementStatus",{width:"160px"}))}><Badge text={p.procurementStatus} type="status"/></td>
                           <td onClick={open} style={TD(hl(p,"capacityMW",{color:C.yellow,whiteSpace:"nowrap",textAlign:"right",fontWeight:"bold"}))}>{p.capacityMW?Number(p.capacityMW).toLocaleString():"—"}</td>
                           <td onClick={open} style={TD({color:"#888",fontSize:"11px"})}>{(p.assetTypes||[]).join(", ")}</td>
                           <td onClick={open} style={TD({color:"#777",fontSize:"11px"})}>{(p.companies||[]).slice(0,2).join(", ")}{(p.companies||[]).length>2?" +"+(p.companies.length-2):""}</td>
