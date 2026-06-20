@@ -275,6 +275,7 @@ function App(){
   const [overrides,setOverrides]=useState({});
   const [tab,setTab]=useState("table");
   const [selected,setSelected]=useState(null);
+  const [fSearch,setFSearch]=useState("");
   const [fCountry,setFCountry]=useState("All");
   const [fPriority,setFPriority]=useState("All");
   const [fStatus,setFStatus]=useState([]);
@@ -313,6 +314,7 @@ function App(){
     return {...p,_pinned:isPinned(p),_aiStatus:p.procurementStatus,_overrideMeta:ov||null,procurementStatus:ov?.status||p.procurementStatus};
   });
   const displayed=withPins
+    .filter(p=>{if(!fSearch.trim())return true;const q=fSearch.trim().toLowerCase();return[p.projectName,p.location,p.owner,p.epcContractor,p.summary,...(p.companies||[]),...(p.assetTypes||[])].some(v=>(v||"").toLowerCase().includes(q));})
     .filter(p=>fCountry==="All"||p.country===fCountry)
     .filter(p=>fPriority==="All"||p.priority===fPriority)
     .filter(p=>fStatus.length===0||fStatus.includes(p.procurementStatus))
@@ -349,8 +351,8 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFHV(false);setFDC(false);setFLowConf(false);}
-  const anyFilter=fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fHV||fDC||fLowConf;
+  function resetFilters(){setFSearch("");setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFHV(false);setFDC(false);setFLowConf(false);}
+  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fHV||fDC||fLowConf;
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
   const fmt=iso=>{
@@ -422,6 +424,7 @@ function App(){
             ))}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 0",flexWrap:"wrap"}}>
+            <input value={fSearch} onChange={e=>setFSearch(e.target.value)} placeholder="🔍 Search projects…" style={{background:"#0d0d0d",color:C.white,border:"1px solid "+(fSearch.trim()?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"11px",outline:"none",width:"180px",letterSpacing:"0.3px"}}/>
             {[
               {val:fCountry,set:setFCountry,opts:["All","Australia","Brazil"],ph:"ALL COUNTRIES"},
               {val:fPriority,set:setFPriority,opts:["All","High","Medium","Low"],ph:"ALL PRIORITIES"},
