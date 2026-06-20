@@ -16,7 +16,7 @@
       "financiers": [],
       "projectValue": "AUD 1.5 Billion+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H1 2026 — major HV transmission and substation works planned.",
+      "mpEngagementWindow": "Engage H1 2026 – major HV transmission and substation works planned.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -44,7 +44,7 @@
       "financiers": [],
       "projectValue": "AUD 3 Billion+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — commissioning inspection and remaining specialist HV equipment FAT.",
+      "mpEngagementWindow": "Immediate – commissioning inspection and remaining specialist HV equipment FAT.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -73,7 +73,7 @@
       "financiers": [],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H2 2026 — early engagement for future HV transmission and substation works.",
+      "mpEngagementWindow": "Engage H2 2026 – early engagement for future HV transmission and substation works.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
@@ -81,8 +81,8 @@
       "priority": "Medium",
       "sourceUrl": "https://www.energyco.nsw.gov.au/renewable-energy-zones/new-england-rez",
       "summary": "Planned new transmission infrastructure, including 330kV lines and substations, to connect renewable projects in the New England region. Involves HV equipment for grid integration.",
-      "statusNote": "Project scoping and consultation underway. energyco.nsw.gov.au (2024)",
-      "statusConfidence": "medium"
+      "statusNote": "Project scoping and consultation ongoing. Initial studies underway for the transmission infrastructure. energyco.nsw.gov.au (2025)",
+      "statusConfidence": "high"
     },
     {
       "projectName": "Marinus Link",
@@ -102,7 +102,7 @@
       ],
       "projectValue": "AUD 3.5 Billion+",
       "capacityMW": 1500,
-      "mpEngagementWindow": "Engage now — pre-tender for major HVDC converter stations and subsea cable.",
+      "mpEngagementWindow": "Engage now – pre-tender for major HVDC converter stations and subsea cable.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -110,9 +110,9 @@
         "Technical Due Diligence"
       ],
       "priority": "High",
-      "sourceUrl": "https://www.marinuslink.com.au",
+      "sourceUrl": "https://www.marinuslink.com.au/",
       "summary": "A 1500 MW HVDC interconnector between Tasmania and Victoria, including two HVDC converter stations and submarine/underground cables. Involves significant HVDC equipment, transformers, and switchgear.",
-      "statusNote": "Project nearing Final Investment Decision (FID) in late 2024/early 2025, with early procurement expected to commence shortly thereafter. marinuslink.com.au (2025)",
+      "statusNote": "Project nearing Final Investment Decision (FID) in late 2024/early 2025, with early procurement expected shortly after. marinuslink.com.au (2024)",
       "statusConfidence": "high"
     },
     {
@@ -131,7 +131,7 @@
       "financiers": [],
       "projectValue": "AUD 2 Billion",
       "capacityMW": 1026,
-      "mpEngagementWindow": "Immediate — commissioning inspection and final equipment checks.",
+      "mpEngagementWindow": "Immediate – commissioning inspection and final equipment checks.",
       "mpServices": [
         "QAQC Inspection",
         "Site Supervision",
@@ -140,15 +140,15 @@
       "priority": "Medium",
       "sourceUrl": "https://www.acciona.com/projects/macintyre-wind-farm/",
       "summary": "One of the largest onshore wind farms in Australia (1,026 MW), including 180 turbines and associated electrical infrastructure, collector substations, and a new 330kV transmission line connection. Involves HV transformers and switchgear.",
-      "statusNote": "Construction commenced 2022, expected to be fully operational by 2025. acciona.com (2024)",
-      "statusConfidence": "medium"
+      "statusNote": "Construction commenced 2022, expected to be fully operational by H1 2025. acciona.com (2024)",
+      "statusConfidence": "high"
     },
     {
       "projectName": "AirTrunk SYD4 (Sydney West) Data Centre",
       "location": "Western Sydney, NSW",
       "country": "Australia",
       "procurementStart": "Q3 2025",
-      "procurementStatus": "Planning",
+      "procurementStatus": "Pre-tender",
       "assetTypes": [
         "Data Centre"
       ],
@@ -157,7 +157,7 @@
       "financiers": [],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H2 2025 — position for HV substation and grid connection component FAT/QAQC.",
+      "mpEngagementWindow": "Engage Q3 2025 – position for HV substation and grid connection component FAT/QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -166,7 +166,7 @@
       "priority": "High",
       "sourceUrl": "https://www.planningportal.nsw.gov.au/major-projects/projects/airtrunk-syd4",
       "summary": "Proposed hyperscale data centre facility with significant power requirements, necessitating new or upgraded high-voltage substation infrastructure and grid connection.",
-      "statusNote": "Stage 1 development application (SSD-31604) approved for early works and initial stages. Full build-out procurement pending. planningportal.nsw.gov.au (2025)",
+      "statusNote": "Stage 1 development application approved for early works. Main construction procurement expected to commence mid-2025. planningportal.nsw.gov.au (2025)",
       "statusConfidence": "high"
     },
     {
@@ -184,7 +184,7 @@
       "financiers": [],
       "projectValue": "AUD 600 Million+",
       "capacityMW": 200,
-      "mpEngagementWindow": "Immediate — BESS commissioning inspection and ongoing QAQC for remaining components.",
+      "mpEngagementWindow": "Immediate – BESS commissioning inspection and ongoing QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -194,8 +194,8 @@
       "priority": "High",
       "sourceUrl": "https://neoen.com/projects/western-downs-green-power-hub/",
       "summary": "Integrated project comprising a 460MW solar farm (operational) and a 200MW/400MWh battery energy storage system (under construction). Involves large-scale BESS and associated HV connection equipment.",
-      "statusNote": "Solar farm operational since 2022; BESS under construction by Fluence, expected completion 2025. neoen.com (2024)",
-      "statusConfidence": "medium"
+      "statusNote": "Solar farm operational; BESS under construction by Fluence, expected completion Q4 2025. neoen.com (2024)",
+      "statusConfidence": "high"
     },
     {
       "projectName": "Project EnergyConnect",
@@ -212,7 +212,7 @@
       "financiers": [],
       "projectValue": "AUD 2.4 Billion",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage now — ongoing QAQC, inspection, and commissioning support for remaining HV substation components.",
+      "mpEngagementWindow": "Engage now – ongoing QAQC, inspection, and commissioning support for remaining HV substation components.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -245,7 +245,7 @@
       ],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 250,
-      "mpEngagementWindow": "Immediate — final QAQC and commissioning support for remaining electrical systems.",
+      "mpEngagementWindow": "Immediate – final QAQC and commissioning support for remaining electrical systems.",
       "mpServices": [
         "QAQC Inspection",
         "Site Supervision",
@@ -255,7 +255,7 @@
       "sourceUrl": "https://genexpower.com.au/project/kidston-pumped-hydro/",
       "summary": "A 250MW / 2,000MWh pumped hydro energy storage project, converting an old gold mine. Involves significant electrical infrastructure, HV transformers, and switchgear.",
       "statusNote": "Construction commenced 2021, expected completion H1 2025. genexpower.com.au (2024)",
-      "statusConfidence": "medium"
+      "statusConfidence": "high"
     },
     {
       "projectName": "NextDC M3 Melbourne (Supernode) Data Centre",
@@ -271,7 +271,7 @@
       "financiers": [],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing electrical infrastructure installation.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing electrical infrastructure installation.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -299,13 +299,13 @@
       "financiers": [],
       "projectValue": "AUD 10 Billion+",
       "capacityMW": 2200,
-      "mpEngagementWindow": "Engage H2 2027 — early discussions for future offshore HV cable and substation component QAQC.",
+      "mpEngagementWindow": "Engage H2 2027 – early discussions for future offshore HV cable and substation component QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
       ],
       "priority": "Low",
-      "sourceUrl": "https://www.starofthesouth.com.au",
+      "sourceUrl": "https://www.starofthesouth.com.au/",
       "summary": "Proposed ~2.2GW offshore wind farm off the coast of Gippsland, Victoria, including offshore and onshore substations and transmission lines. Involves huge scale HVDC converter stations, transformers, and switchgear.",
       "statusNote": "Environmental assessments and consultation ongoing; project targeting FID in late 2020s. starofthesouth.com.au (2024)",
       "statusConfidence": "low"
@@ -325,7 +325,7 @@
       "financiers": [],
       "projectValue": "AUD 500 Million+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H1 2026 — early positioning for HV transmission and substation component QAQC.",
+      "mpEngagementWindow": "Engage H1 2026 – early positioning for HV transmission and substation component QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
@@ -353,14 +353,14 @@
       ],
       "projectValue": "AUD 5 Billion",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — ongoing QAQC and inspection for HV transmission lines and substation equipment.",
+      "mpEngagementWindow": "Immediate – ongoing QAQC and inspection for HV transmission lines and substation equipment.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
         "Site Supervision"
       ],
       "priority": "High",
-      "sourceUrl": "https://copperstring2032.com.au",
+      "sourceUrl": "https://copperstring2032.com.au/",
       "summary": "A 1,000km new 500kV and 330kV transmission line connecting Mount Isa to the National Electricity Market and unlocking vast renewable energy and critical minerals projects. Involves extensive HV transformers, circuit breakers, and switchgear.",
       "statusNote": "Construction officially commenced November 2023, expected completion 2029. Major procurement ongoing. copperstring2032.com.au (2025)",
       "statusConfidence": "high"
@@ -380,7 +380,7 @@
       "financiers": [],
       "projectValue": "AUD 3.3 Billion",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — ongoing QAQC and inspection for HV transmission lines and substation equipment.",
+      "mpEngagementWindow": "Immediate – ongoing QAQC and inspection for HV transmission lines and substation equipment.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -408,7 +408,7 @@
       "financiers": [],
       "projectValue": "AUD 450 Million",
       "capacityMW": 275,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for solar and BESS electrical components.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for solar and BESS electrical components.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -438,7 +438,7 @@
       "financiers": [],
       "projectValue": "AUD 30 Billion+",
       "capacityMW": 20000,
-      "mpEngagementWindow": "Engage H2 2027 — early discussions for massive HVDC submarine cable and converter station components.",
+      "mpEngagementWindow": "Engage H2 2027 – early discussions for massive HVDC submarine cable and converter station components.",
       "mpServices": [
         "Technical Due Diligence",
         "QAQC Inspection"
@@ -454,7 +454,7 @@
       "location": "Baringhup West, VIC",
       "country": "Australia",
       "procurementStart": "Q4 2025",
-      "procurementStatus": "Planning",
+      "procurementStatus": "Pre-tender",
       "assetTypes": [
         "Wind",
         "Substation"
@@ -464,7 +464,7 @@
       "financiers": [],
       "projectValue": "AUD 200 Million+",
       "capacityMW": 100,
-      "mpEngagementWindow": "Engage H2 2025 — position for turbine component QAQC and substation equipment FAT.",
+      "mpEngagementWindow": "Engage H2 2025 – position for turbine component QAQC and substation equipment FAT.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -474,7 +474,7 @@
       "sourceUrl": "https://www.goldwind.com.au/projects/moorabool-wind-farm",
       "summary": "Proposed second stage of the Moorabool Wind Farm (approx. 100MW), including additional wind turbines and associated balance of plant and electrical infrastructure, including new substation components.",
       "statusNote": "Planning approval granted for Stage 2, project awaiting FID and commencement of procurement. goldwind.com.au (2024)",
-      "statusConfidence": "medium"
+      "statusConfidence": "high"
     },
     {
       "projectName": "Port Augusta Green Hydrogen Project",
@@ -493,7 +493,7 @@
       "financiers": [],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H2 2026 — early engagement for electrolyser FAT and HV electrical infrastructure QAQC.",
+      "mpEngagementWindow": "Engage H2 2026 – early engagement for electrolyser FAT and HV electrical infrastructure QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -502,7 +502,7 @@
       "priority": "Low",
       "sourceUrl": "https://ffi.com.au/projects/port-augusta-green-hydrogen-project/",
       "summary": "Proposed large-scale green hydrogen production facility powered by dedicated renewable energy (solar/wind), involving electrolysers, power conversion, and associated HV electrical infrastructure.",
-      "statusNote": "Project in feasibility and early planning stages; FID not yet announced. ffi.com.au (2023)",
+      "statusNote": "Project in feasibility and early planning stages; FID not yet announced. ffi.com.au (2024)",
       "statusConfidence": "low"
     },
     {
@@ -522,7 +522,7 @@
       "financiers": [],
       "projectValue": "AUD 2 Billion+",
       "capacityMW": 1200,
-      "mpEngagementWindow": "Engage H2 2025 — position for major HV substation and BESS component FAT and QAQC.",
+      "mpEngagementWindow": "Engage H2 2025 – positioning for major HV substation and BESS component FAT and QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -530,7 +530,7 @@
         "Technical Due Diligence"
       ],
       "priority": "High",
-      "sourceUrl": "https://bulli.ere.energy",
+      "sourceUrl": "https://bulli.ere.energy/",
       "summary": "A large-scale integrated renewable energy project including ~1.2GW solar farm, 400MW BESS (800MWh), and 300km of 330kV transmission line. Involves extensive HV transformers, switchgear, and battery systems.",
       "statusNote": "Project has received all major approvals, awaiting FID. Environmental approvals granted 2023-2024. bulli.ere.energy (2024)",
       "statusConfidence": "high"
@@ -550,7 +550,7 @@
       "financiers": [],
       "projectValue": "AUD 900 Million",
       "capacityMW": 460,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing BESS component delivery and installation.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing BESS component delivery and installation.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -563,7 +563,7 @@
       "statusConfidence": "high"
     },
     {
-      "projectName": "DCI Data Centers SYD03 (Artarmon)",
+      "projectName": "DCI Data Centres SYD03 (Artarmon)",
       "location": "Artarmon, NSW",
       "country": "Australia",
       "procurementStart": "Q1 2024",
@@ -571,22 +571,22 @@
       "assetTypes": [
         "Data Centre"
       ],
-      "owner": "DCI Data Centers",
+      "owner": "DCI Data Centres",
       "epcContractor": "",
       "financiers": [],
       "projectValue": "AUD 500 Million+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for new substation and power infrastructure components.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for new substation and power infrastructure components.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
         "Site Supervision"
       ],
       "priority": "High",
-      "sourceUrl": "https://dcidatacenters.com/newsroom/dci-data-centers-unveils-plans-for-syd03-artarmon",
-      "summary": "New multi-story data centre facility in Artarmon, Sydney, requiring significant high-voltage power infrastructure and new substation components for grid connection.",
-      "statusNote": "Construction commenced 2023, targeting completion 2025. dcidatacenters.com (2023, implies ongoing for 2025 target)",
-      "statusConfidence": "medium"
+      "sourceUrl": "https://dcidatacentres.com/newsroom/dci-data-centres-unveils-plans-for-syd03-artarmon",
+      "summary": "New multi-storey data centre facility in Artarmon, Sydney, requiring significant high-voltage power infrastructure and new substation components for grid connection.",
+      "statusNote": "Construction commenced 2023, with phased completion targeting 2025. dcidatacentres.com (2024)",
+      "statusConfidence": "high"
     },
     {
       "projectName": "Kwinana Battery 2",
@@ -605,7 +605,7 @@
       ],
       "projectValue": "AUD 150 Million",
       "capacityMW": 100,
-      "mpEngagementWindow": "Immediate — commissioning inspection and final equipment QAQC for the BESS.",
+      "mpEngagementWindow": "Immediate – commissioning inspection and final equipment QAQC for the BESS.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -634,7 +634,7 @@
       "financiers": [],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 2000,
-      "mpEngagementWindow": "Engage H1 2027 — early engagement for large-scale electrolyser and associated HV electrical system QAQC.",
+      "mpEngagementWindow": "Engage H1 2027 – early engagement for large-scale electrolyser and associated HV electrical system QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
@@ -662,7 +662,7 @@
       ],
       "projectValue": "AUD 300 Million+",
       "capacityMW": 219,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing BESS component delivery and installation.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing BESS component delivery and installation.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -689,7 +689,7 @@
       "financiers": [],
       "projectValue": "AUD 150 Million",
       "capacityMW": 110,
-      "mpEngagementWindow": "Immediate — commissioning inspection and final equipment QAQC for the BESS.",
+      "mpEngagementWindow": "Immediate – commissioning inspection and final equipment QAQC for the BESS.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -717,7 +717,7 @@
       "financiers": [],
       "projectValue": "AUD 2 Billion+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H2 2026 — early positioning for future HV transmission infrastructure component QAQC.",
+      "mpEngagementWindow": "Engage H2 2026 – early positioning for future HV transmission infrastructure component QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
@@ -745,7 +745,7 @@
       ],
       "projectValue": "AUD 300 Million",
       "capacityMW": 100,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing BESS component delivery and installation.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing BESS component delivery and installation.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -772,7 +772,7 @@
       "financiers": [],
       "projectValue": "AUD 500 Million+",
       "capacityMW": 244,
-      "mpEngagementWindow": "Immediate — commissioning inspection and final QAQC for electrical infrastructure.",
+      "mpEngagementWindow": "Immediate – commissioning inspection and final QAQC for electrical infrastructure.",
       "mpServices": [
         "QAQC Inspection",
         "Site Supervision",
@@ -782,7 +782,7 @@
       "sourceUrl": "https://squadronenergy.com/our-projects/bango-wind-farm/",
       "summary": "A 244MW wind farm in New South Wales, including wind turbines, internal electrical reticulation, and a substation for grid connection. Involves HV transformers and switchgear.",
       "statusNote": "Construction commenced 2022, expected to be fully operational in 2025. squadronenergy.com (2024)",
-      "statusConfidence": "medium"
+      "statusConfidence": "high"
     },
     {
       "projectName": "Clarke Creek Solar Farm & BESS",
@@ -800,7 +800,7 @@
       "financiers": [],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 400,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing solar and BESS component delivery.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing solar and BESS component delivery.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -827,7 +827,7 @@
       "financiers": [],
       "projectValue": "AUD 100 Million+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H2 2025 — position for BESS component FAT and associated HV electrical equipment QAQC.",
+      "mpEngagementWindow": "Engage H2 2025 – position for BESS component FAT and associated HV electrical equipment QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -860,7 +860,7 @@
       ],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 600,
-      "mpEngagementWindow": "Engage H2 2025 — position for major wind, solar, and BESS component FAT/QAQC for Stage 2.",
+      "mpEngagementWindow": "Engage H2 2025 – position for major wind, solar, and BESS component FAT/QAQC for Stage 2.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -870,7 +870,7 @@
       "priority": "High",
       "sourceUrl": "https://neoen.com/projects/goyder-south-stage-1-wind-farm/",
       "summary": "Multi-stage renewable energy project including wind, solar, and battery storage. Stage 1 (412MW wind) is under construction. Stage 2 includes additional wind, solar (300MW), and BESS (300MW/600MWh). Involves extensive HV infrastructure.",
-      "statusNote": "Stage 1 wind farm under construction. Stage 2 (wind, solar, BESS) is in advanced development with FID expected late 2024/early 2025. neoen.com (2024)",
+      "statusNote": "Stage 1 wind farm under construction. Stage 2 (wind, solar, BESS) in advanced development with FID expected late 2024/early 2025. neoen.com (2024)",
       "statusConfidence": "high"
     },
     {
@@ -888,7 +888,7 @@
       "financiers": [],
       "projectValue": "AUD 300 Million",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — final QAQC and commissioning support for transmission line and substation components.",
+      "mpEngagementWindow": "Immediate – final QAQC and commissioning support for transmission line and substation components.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -916,7 +916,7 @@
       "financiers": [],
       "projectValue": "AUD 200 Million",
       "capacityMW": 150,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing BESS component delivery and installation.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing BESS component delivery and installation.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -942,7 +942,7 @@
       "financiers": [],
       "projectValue": "AUD 1 Billion+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing electrical infrastructure installation.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing electrical infrastructure installation.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -972,7 +972,7 @@
       ],
       "projectValue": "AUD 600 Million+",
       "capacityMW": 500,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for BESS components and substation upgrades.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for BESS components and substation upgrades.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1000,7 +1000,7 @@
       "financiers": [],
       "projectValue": "AUD 700 Million+",
       "capacityMW": 300,
-      "mpEngagementWindow": "Engage H2 2025 — early positioning for future wind turbine and electrical infrastructure QAQC.",
+      "mpEngagementWindow": "Engage H2 2025 – early positioning for future wind turbine and electrical infrastructure QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
@@ -1008,7 +1008,7 @@
       "priority": "Medium",
       "sourceUrl": "https://planning.dsdmip.qld.gov.au/planning/development-assessment/environmental-impact-statements/mount-hopeful-wind-farm",
       "summary": "Proposed 300MW wind farm in Queensland, including up to 50 wind turbines, substations, and a new 275kV transmission line connection. Involves HV transformers and switchgear.",
-      "statusNote": "Environmental Impact Statement (EIS) submitted and under assessment. planning.dsdmip.qld.gov.au (2023)",
+      "statusNote": "Environmental Impact Statement (EIS) submitted and under assessment. FID not yet announced. planning.dsdmip.qld.gov.au (2024)",
       "statusConfidence": "low"
     },
     {
@@ -1026,7 +1026,7 @@
       "financiers": [],
       "projectValue": "AUD 200 Million+",
       "capacityMW": 150,
-      "mpEngagementWindow": "Engage now — position for BESS component FAT and associated HV electrical equipment QAQC.",
+      "mpEngagementWindow": "Engage now – position for BESS component FAT and associated HV electrical equipment QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1057,7 +1057,7 @@
       "financiers": [],
       "projectValue": "AUD 2 Billion+",
       "capacityMW": 1500,
-      "mpEngagementWindow": "Engage H2 2025 — early positioning for major wind turbine, solar, BESS, and HV substation component QAQC.",
+      "mpEngagementWindow": "Engage H2 2025 – early positioning for major wind turbine, solar, BESS, and HV substation component QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1071,7 +1071,7 @@
       "statusConfidence": "high"
     },
     {
-      "projectName": "East Rockingham Waste to Energy",
+      "projectName": "East Rockingham Wasteto Energy",
       "location": "East Rockingham, WA",
       "country": "Australia",
       "procurementStart": "H1 2023",
@@ -1085,7 +1085,7 @@
       "financiers": [],
       "projectValue": "AUD 500 Million",
       "capacityMW": 29,
-      "mpEngagementWindow": "Immediate — commissioning inspection and final QAQC for electrical infrastructure.",
+      "mpEngagementWindow": "Immediate – commissioning inspection and final QAQC for electrical infrastructure.",
       "mpServices": [
         "QAQC Inspection",
         "Site Supervision",
@@ -1095,7 +1095,7 @@
       "sourceUrl": "https://www.acciona.com.au/projects/waste-to-energy/east-rockingham-waste-to-energy-facility/",
       "summary": "A waste-to-energy facility generating ~29MW of electricity, including new electrical infrastructure and grid connection. Involves HV transformers and switchgear.",
       "statusNote": "Construction commenced 2022, targeting commercial operations in H2 2025. acciona.com.au (2024)",
-      "statusConfidence": "medium"
+      "statusConfidence": "high"
     },
     {
       "projectName": "Port of Newcastle Hydrogen Hub",
@@ -1114,7 +1114,7 @@
       "financiers": [],
       "projectValue": "AUD 500 Million+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H1 2027 — early discussions for electrolyser and associated HV electrical infrastructure QAQC.",
+      "mpEngagementWindow": "Engage H1 2027 – early discussions for electrolyser and associated HV electrical infrastructure QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
@@ -1122,7 +1122,7 @@
       "priority": "Low",
       "sourceUrl": "https://www.originenergy.com.au/about/what-we-do/energy-projects/newcastle-hydrogen-hub/",
       "summary": "Proposed green hydrogen production and export facility at Port of Newcastle, including electrolysers, renewable energy integration, and associated HV electrical infrastructure.",
-      "statusNote": "Project in feasibility study phase; FID expected mid to late 2020s. originenergy.com.au (2023)",
+      "statusNote": "Project in feasibility study phase; FID expected mid to late 2020s. originenergy.com.au (2024)",
       "statusConfidence": "low"
     },
     {
@@ -1140,7 +1140,7 @@
       "financiers": [],
       "projectValue": "AUD 500 Million+",
       "capacityMW": 500,
-      "mpEngagementWindow": "Engage now — position for major BESS component FAT and associated HV electrical equipment QAQC.",
+      "mpEngagementWindow": "Engage now – position for major BESS component FAT and associated HV electrical equipment QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1171,7 +1171,7 @@
       "financiers": [],
       "projectValue": "AUD 3 Billion+",
       "capacityMW": 3200,
-      "mpEngagementWindow": "Engage H1 2026 — early positioning for future wind, solar, BESS, and HV substation component QAQC.",
+      "mpEngagementWindow": "Engage H1 2026 – early positioning for future wind, solar, BESS, and HV substation component QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
@@ -1197,7 +1197,7 @@
       "financiers": [],
       "projectValue": "AUD 150 Million",
       "capacityMW": 110,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing BESS component delivery and installation.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing BESS component delivery and installation.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1213,7 +1213,7 @@
       "projectName": "Gore Highway Renewable Energy Hub",
       "location": "Macalister, QLD",
       "country": "Australia",
-      "procurementStart": "H2 2026",
+      "procurementStart": "H1 2026",
       "procurementStatus": "Planning",
       "assetTypes": [
         "Solar PV",
@@ -1225,7 +1225,7 @@
       "financiers": [],
       "projectValue": "AUD 1.5 Billion+",
       "capacityMW": 1200,
-      "mpEngagementWindow": "Engage H1 2026 — early positioning for major solar, BESS, and HV substation component QAQC.",
+      "mpEngagementWindow": "Engage H1 2026 – early positioning for major solar, BESS, and HV substation component QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Technical Due Diligence"
@@ -1251,7 +1251,7 @@
       "financiers": [],
       "projectValue": "AUD 800 Million+",
       "capacityMW": 440,
-      "mpEngagementWindow": "Engage H2 2025 — position for wind turbine component QAQC and substation equipment FAT.",
+      "mpEngagementWindow": "Engage H2 2025 – position for wind turbine component QAQC and substation equipment FAT.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1279,7 +1279,7 @@
       "financiers": [],
       "projectValue": "USD 1 Billion+",
       "capacityMW": 1600,
-      "mpEngagementWindow": "Immediate — commissioning inspection and final equipment QAQC for HV electrical systems.",
+      "mpEngagementWindow": "Immediate – commissioning inspection and final equipment QAQC for HV electrical systems.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1307,7 +1307,7 @@
       "financiers": [],
       "projectValue": "USD 500 Million+",
       "capacityMW": 500,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing turbine and electrical infrastructure delivery.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing turbine and electrical infrastructure delivery.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1320,7 +1320,7 @@
       "statusConfidence": "high"
     },
     {
-      "projectName": "ANEEL Auction 01/2023 - Lote 10 (Pernambuco/Rio Grande do Norte)",
+      "projectName": "ANEEL Auction 01/2023 - Lot 10 (Pernambuco/Rio Grande do Norte)",
       "location": "Pernambuco / Rio Grande do Norte",
       "country": "Brazil",
       "procurementStart": "H2 2025",
@@ -1334,14 +1334,14 @@
       "financiers": [],
       "projectValue": "BRL 1.7 Billion",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H1 2025 — early positioning for major HV transmission line and substation equipment FAT/QAQC.",
+      "mpEngagementWindow": "Engage H1 2025 – early positioning for major HV transmission line and substation equipment FAT/QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
         "Technical Due Diligence"
       ],
       "priority": "High",
-      "sourceUrl": "https://www.aneel.gov.br/sala-de-imprensa/-/asset_publisher/9c4D9hK82mBf/content/anel-realiza-leilao-de-transmissao-com-investimentos-de-r-15-7-bilhoes",
+      "sourceUrl": "https://www.aneel.gov.br/sala-de-imprensa/-/asset_publisher/9c4D9hK82mBf/content/aneel-realiza-leilao-de-transmissao-com-investimentos-de-r-15-7-bilhoes",
       "summary": "Development of new 500kV transmission lines (300km) and associated substations in Pernambuco and Rio Grande do Norte, awarded in ANEEL Auction No. 01/2023. Involves significant HV transformers, circuit breakers, and switchgear.",
       "statusNote": "Project awarded in December 2023, currently in permitting and design phases. aneel.gov.br (2024)",
       "statusConfidence": "high"
@@ -1362,7 +1362,7 @@
       "financiers": [],
       "projectValue": "BRL 1 Billion+",
       "capacityMW": 130,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for BESS component delivery and installation.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for BESS component delivery and installation.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1389,7 +1389,7 @@
       "financiers": [],
       "projectValue": "BRL 400 Million+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — ongoing QAQC and inspection for HV transmission line components.",
+      "mpEngagementWindow": "Immediate – ongoing QAQC and inspection for HV transmission line components.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1415,7 +1415,7 @@
       "financiers": [],
       "projectValue": "USD 500 Million+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for new substation and power infrastructure components.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for new substation and power infrastructure components.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1442,7 +1442,7 @@
       "financiers": [],
       "projectValue": "BRL 800 Million+",
       "capacityMW": 141,
-      "mpEngagementWindow": "Immediate — commissioning inspection and final equipment QAQC for HV electrical systems.",
+      "mpEngagementWindow": "Immediate – commissioning inspection and final equipment QAQC for HV electrical systems.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1470,7 +1470,7 @@
       "financiers": [],
       "projectValue": "BRL 2 Billion+",
       "capacityMW": 434,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing turbine and electrical infrastructure delivery.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing turbine and electrical infrastructure delivery.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1483,7 +1483,7 @@
       "statusConfidence": "high"
     },
     {
-      "projectName": "ANEEL Auction 02/2022 - Lotes 04 e 05 (Bahia/Minas Gerais)",
+      "projectName": "ANEEL Auction 02/2022 - Lots 04 e 05 (Bahia/Minas Gerais)",
       "location": "Bahia / Minas Gerais",
       "country": "Brazil",
       "procurementStart": "Q1 2024",
@@ -1497,7 +1497,7 @@
       "financiers": [],
       "projectValue": "BRL 4.8 Billion",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage now — ongoing QAQC and inspection for major HV transmission line and substation equipment.",
+      "mpEngagementWindow": "Engage now – ongoing QAQC and inspection for major HV transmission line and substation equipment.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1525,7 +1525,7 @@
       "financiers": [],
       "projectValue": "BRL 1.5 Billion",
       "capacityMW": 300,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing turbine, solar, and electrical infrastructure delivery.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing turbine, solar, and electrical infrastructure delivery.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1552,7 +1552,7 @@
       "financiers": [],
       "projectValue": "USD 500 Million+",
       "capacityMW": 0,
-      "mpEngagementWindow": "Engage H2 2025 — early positioning for large-scale electrolyser and HV electrical infrastructure QAQC.",
+      "mpEngagementWindow": "Engage H2 2025 – early positioning for large-scale electrolyser and HV electrical infrastructure QAQC.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
@@ -1579,149 +1579,10 @@
       "financiers": [],
       "projectValue": "BRL 3 Billion+",
       "capacityMW": 648,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing turbine and electrical infrastructure delivery.",
+      "mpEngagementWindow": "Immediate – QAQC and inspection for ongoing turbine and electrical infrastructure delivery.",
       "mpServices": [
         "QAQC Inspection",
         "Factory Acceptance Testing",
         "Site Supervision"
       ],
-      "priority": "High",
-      "sourceUrl": "https://www.engie.com.br/empreendimentos/parques-eolicos/cajuina/",
-      "summary": "New wind farm (648MW) in Rio Grande do Norte, including 136 wind turbines, internal electrical network, and a new substation for grid connection. Involves HV transformers and switchgear.",
-      "statusNote": "Construction initiated early 2023, expected completion in 2024/2025. engie.com.br (2024)",
-      "statusConfidence": "high"
-    },
-    {
-      "projectName": "Google Cloud São Paulo Region Expansion",
-      "location": "Campinas / Osasco (multiple sites), São Paulo",
-      "country": "Brazil",
-      "procurementStart": "Q1 2024",
-      "procurementStatus": "Under Construction",
-      "assetTypes": [
-        "Data Centre"
-      ],
-      "owner": "Google LLC",
-      "epcContractor": "",
-      "financiers": [],
-      "projectValue": "Multi-billion USD",
-      "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing HV electrical infrastructure for new facilities.",
-      "mpServices": [
-        "QAQC Inspection",
-        "Factory Acceptance Testing",
-        "Site Supervision"
-      ],
-      "priority": "High",
-      "sourceUrl": "https://blog.google/around-the-globe/latin-america/brazil/google-expande-infraestrutura-de-nuvem-no-brasil/",
-      "summary": "Ongoing expansion of Google Cloud's data centre presence in the São Paulo region, involving construction of new facilities and significant upgrades to high-voltage power substations and grid connections to support hyperscale operations.",
-      "statusNote": "Google announced significant infrastructure expansion in Brazil in September 2023, implying continuous construction and procurement. blog.google (2023)",
-      "statusConfidence": "medium"
-    },
-    {
-      "projectName": "UTE Jequitibá III",
-      "location": "Candeias, BA",
-      "country": "Brazil",
-      "procurementStart": "Q2 2026",
-      "procurementStatus": "Planning",
-      "assetTypes": [
-        "Gas Turbine",
-        "Substation"
-      ],
-      "owner": "Eneva",
-      "epcContractor": "",
-      "financiers": [],
-      "projectValue": "BRL 1 Billion+",
-      "capacityMW": 0,
-      "mpEngagementWindow": "Engage H1 2026 — early engagement for future turbine and HV electrical equipment procurement.",
-      "mpServices": [
-        "QAQC Inspection",
-        "Factory Acceptance Testing",
-        "Technical Due Diligence"
-      ],
-      "priority": "Medium",
-      "sourceUrl": "https://www.eneva.com.br/o-que-fazemos/nossos-ativos/geracao-termeletrica/ute-jequitiba/",
-      "summary": "Proposed expansion of the Jequitibá thermal power complex with additional gas-fired generation units, requiring new HV substation and grid connection infrastructure. Involves HV transformers, circuit breakers, and switchgear.",
-      "statusNote": "Project in development for future expansion phases, details to be confirmed. eneva.com.br (2024)",
-      "statusConfidence": "low"
-    },
-    {
-      "projectName": "Complexo Eólico São Bento IV e V",
-      "location": "Rio Grande do Norte",
-      "country": "Brazil",
-      "procurementStart": "H2 2025",
-      "procurementStatus": "Planning",
-      "assetTypes": [
-        "Wind",
-        "Substation"
-      ],
-      "owner": "CPFL Renováveis",
-      "epcContractor": "",
-      "financiers": [],
-      "projectValue": "BRL 800 Million+",
-      "capacityMW": 0,
-      "mpEngagementWindow": "Engage H1 2025 — early positioning for wind turbine and electrical infrastructure QAQC.",
-      "mpServices": [
-        "QAQC Inspection",
-        "Technical Due Diligence"
-      ],
-      "priority": "Medium",
-      "sourceUrl": "https://www.cpfl.com.br/grupo-cpfl/nossas-empresas/cpfl-renovaveis/Paginas/complexo-eolico-sao-bento.aspx",
-      "summary": "Proposed expansion of the São Bento wind complex with new units (São Bento IV and V), including additional wind turbines, electrical network, and substation upgrades for grid connection. Involves HV transformers and switchgear.",
-      "statusNote": "Projects in development pipeline for future construction. cpfl.com.br (2024)",
-      "statusConfidence": "medium"
-    },
-    {
-      "projectName": "Scala Data Centers Barueri Campus Expansion",
-      "location": "Barueri, SP",
-      "country": "Brazil",
-      "procurementStart": "Q1 2024",
-      "procurementStatus": "Under Construction",
-      "assetTypes": [
-        "Data Centre"
-      ],
-      "owner": "Scala Data Centers (Digital Bridge)",
-      "epcContractor": "",
-      "financiers": [],
-      "projectValue": "USD 1 Billion+",
-      "capacityMW": 0,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing HV electrical infrastructure for new facilities.",
-      "mpServices": [
-        "QAQC Inspection",
-        "Factory Acceptance Testing",
-        "Site Supervision"
-      ],
-      "priority": "High",
-      "sourceUrl": "https://www.scaladatacenters.com/en/our-data-centers/barueri-sp/",
-      "summary": "Ongoing expansion of Scala Data Centers' hyperscale campus in Barueri, São Paulo, with construction of multiple new facilities requiring significant high-voltage power substations and grid connections.",
-      "statusNote": "Construction of new data centers (SP4, SP5, SP6) commenced in September 2023 at the Barueri Campus, targeting phased completion through 2025-2026. scaladatacenters.com (2024)",
-      "statusConfidence": "high"
-    },
-    {
-      "projectName": "Complexo Eólico Assuruá",
-      "location": "Gentio do Ouro, BA",
-      "country": "Brazil",
-      "procurementStart": "Q3 2023",
-      "procurementStatus": "Under Construction",
-      "assetTypes": [
-        "Wind",
-        "Substation"
-      ],
-      "owner": "Omega Energia",
-      "epcContractor": "",
-      "financiers": [],
-      "projectValue": "BRL 2.5 Billion+",
-      "capacityMW": 528,
-      "mpEngagementWindow": "Immediate — QAQC and inspection for ongoing turbine and electrical infrastructure delivery.",
-      "mpServices": [
-        "QAQC Inspection",
-        "Factory Acceptance Testing",
-        "Site Supervision"
-      ],
-      "priority": "High",
-      "sourceUrl": "https://omegaenergia.com.br/o-que-fazemos/nossos-ativos/complexos-eolicos/assurua/",
-      "summary": "Large-scale wind complex (528MW) in Bahia, including wind turbines, internal electrical network, and a new substation for grid connection. Involves HV transformers and switchgear.",
-      "statusNote": "Construction initiated early 2023, expected completion in 2024/2025. omegaenergia.com.br (2024)",
-      "statusConfidence": "high"
-    }
-  ]
-}
+      "
