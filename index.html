@@ -48,21 +48,31 @@ function parseProcurementDate(s){
   if(ym)return new Date(parseInt(ym[1]),0,1);
   return null;
 }
-function isStaleConstruction(p){
-  if((p.procurementStatus||"")!=="Under Construction")return false;
+function isStale(p){
+  const status=p.procurementStatus||"";
   const d=parseProcurementDate(p.procurementStart);
   if(!d)return false;
-  const cutoff=new Date();cutoff.setFullYear(cutoff.getFullYear()-1);
-  return d<cutoff;
+  const now=new Date();
+  // Under Construction: hide if equipment procurement started >12 months ago
+  if(status==="Under Construction"){
+    const cut12=new Date();cut12.setFullYear(cut12.getFullYear()-1);
+    return d<cut12;
+  }
+  // Planning / Pre-tender: hide if procurement date passed >3 months ago (status never advanced)
+  if(status==="Planning"||status==="Pre-tender"){
+    const cut3=new Date();cut3.setMonth(cut3.getMonth()-3);
+    return d<cut3;
+  }
+  return false;
 }
-// Flag projects where procurementStart is in the past but status is still early-stage
-// (Planning or Pre-tender) — likely a stale date from Gemini, not a hidden project
 function hasDateStatusMismatch(p){
   const status=p.procurementStatus||"";
   if(status!=="Planning"&&status!=="Pre-tender")return false;
   const d=parseProcurementDate(p.procurementStart);
   if(!d)return false;
-  return d<new Date(); // procurement date already passed but still in early stage
+  // Show DATE? only for borderline cases (0-3 months past) — older ones get hidden by isStale
+  const cut3=new Date();cut3.setMonth(cut3.getMonth()-3);
+  return d<new Date()&&d>=cut3;
 }
 function computeChangeStatus(cur, prev){
   const prevMap=new Map((prev||[]).map(p=>[p.projectName.toLowerCase(),p]));
@@ -349,7 +359,7 @@ function App(){
     .filter(p=>!fHV||hasHVEquipment(p))
     .filter(p=>!fDC||isDataCentre(p))
     .filter(p=>!fLowConf||(p.statusConfidence==="low"||!p.statusConfidence))
-    .filter(p=>!fHideStale||!isStaleConstruction(p))
+    .filter(p=>!fHideStale||!isStale(p))
     .sort((a,b)=>{
       if(sortKey==="priority"){
         if(a._pinned!==b._pinned)return a._pinned?-1:1;
@@ -480,7 +490,7 @@ function App(){
             <button onClick={()=>setFHV(v=>!v)} style={{background:fHV?C.yellow:"#0d0d0d",color:fHV?C.black:"#666",border:"1px solid "+(fHV?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHV?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚡ HV EQUIP ONLY</button>
             <button onClick={()=>setFDC(v=>!v)} style={{background:fDC?"#7cc4ff":"#0d0d0d",color:fDC?C.black:"#666",border:"1px solid "+(fDC?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fDC?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>🖥 DATA CENTRES ONLY</button>
             <button onClick={()=>setFLowConf(v=>!v)} style={{background:fLowConf?"#ff5555":"#0d0d0d",color:fLowConf?C.white:"#666",border:"1px solid "+(fLowConf?"#ff5555":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fLowConf?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚠ UNVERIFIED ONLY</button>
-            <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#666":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Under Construction projects where equipment procurement started more than 1 year ago">{fHideStale?"🚧 SHOW STALE UC":"🚧 HIDE STALE UC"}</button>
+            <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#666":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Hides: Under Construction with procurement >12 months ago; Planning/Pre-tender with procurement date passed >3 months ago">{fHideStale?"🚧 SHOW STALE":"🚧 HIDE STALE"}</button>
             {anyFilter&&<button onClick={resetFilters} style={{background:"none",border:"1px solid #333",color:"#999",padding:"6px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>✕ RESET FILTERS</button>}
           </div>
         </div>
