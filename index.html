@@ -116,7 +116,7 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
         </div>
         {p._changeStatus==="updated"&&(p._changedFields||[]).length>0&&(
           <div style={{width:"100%",marginTop:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#0a4a5c",fontWeight:"bold",letterSpacing:"0.5px"}}>
-            ↻ CHANGED THIS SCAN: {(p._changedFields||[]).map(f=>({procurementStart:"Procurement Start",procurementStatus:"Status",priority:"Priority",capacityMW:"Capacity",mpEngagementWindow:"Engagement Window",projectValue:"Project Value"}[f]||f)).join(" · ").toUpperCase()}
+            ↻ CHANGED THIS SCAN: {(p._changedFields||[]).map(f=>({procurementStart:"Equip. Procurement",procurementStatus:"Status",priority:"Priority",capacityMW:"Capacity",mpEngagementWindow:"Engagement Window",projectValue:"Project Value"}[f]||f)).join(" · ").toUpperCase()}
           </div>
         )}
         <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
@@ -136,7 +136,7 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
           <div style={{background:C.card,borderLeft:"3px solid "+C.yellow,padding:"12px 14px",marginBottom:"16px"}}>
             <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"6px"}}>⚡ MP ENGAGEMENT WINDOW</div>
             <div style={{color:C.white,fontFamily:"Arial,sans-serif",fontSize:"13px",fontWeight:"bold"}}>{p.mpEngagementWindow||"Review procurement timeline"}</div>
-            <div style={{color:C.muted,fontFamily:"Arial,sans-serif",fontSize:"11px",marginTop:"4px"}}>Procurement start: {p.procurementStart||"TBD"}</div>
+            <div style={{color:C.muted,fontFamily:"Arial,sans-serif",fontSize:"11px",marginTop:"4px"}}>Equip. procurement: {p.procurementStart||"TBD"}</div>
           </div>
           <div style={{background:"#0d0010",border:"1px dashed #6633aa",padding:"12px 14px",marginBottom:"16px"}}>
             <div style={{color:"#cc77ff",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"8px"}}>
@@ -477,7 +477,7 @@ function App(){
                   <thead><tr>
                     <ColHead label="Project Name" k="projectName" style={{width:"200px"}}/>
                     <ColHead label="Location" k="location" style={{width:"115px"}}/>
-                    <ColHead label="Procure." k="procurementStart" style={{width:"78px"}}/>
+                    <ColHead label="Equip. Proc." k="procurementStart" style={{width:"88px"}}/>
                     <ColHead label="Status" k="procurementStatus" style={{width:"110px"}}/>
                     <ColHead label="MW" k="capacityMW" style={{width:"58px"}}/>
                     <ColHead label="Key Assets" k="assetTypes" style={{width:"120px"}}/>
