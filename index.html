@@ -23,6 +23,7 @@ const PROJECTS_URL = "projects.json";
 const PREV_URL     = "projects-prev.json";
 const LASTSCAN_URL = "last-scan.json";
 const PIN_KEY      = "mp-pins-v1";
+const OVERRIDE_KEY = "mp-overrides-v1";
 const C = {
   yellow:"#FDB422", black:"#000000", white:"#FFFFFF",
   card:"#0d0d0d", border:"#1e1e1e", muted:"#444444",
@@ -75,6 +76,13 @@ function Badge({text,type}){
 }
 function HVBadge(){return <span title="HV transformers / circuit breakers — MP core experience" style={{background:"#2a1500",color:C.yellow,border:"1px solid "+C.yellow,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>⚡ HV EQUIP</span>;}
 function DCBadge(){return <span title="Data centre — grid connection, substation & transmission opportunity" style={{background:"#0a1a2a",color:"#7cc4ff",border:"1px solid #7cc4ff",padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",display:"inline-block",whiteSpace:"nowrap"}}>🖥 DATA CENTRE</span>;}
+function ConfidenceDot({confidence}){
+  if(!confidence)return null;
+  const map={high:{c:"#4ADE80",t:"High confidence — AI verified with 2025-2026 source"},medium:{c:"#FDB422",t:"Medium confidence — based on 2024 source, may be slightly stale"},low:{c:"#ff5555",t:"⚠ Low confidence — pre-2024 source or inferred. Verify manually."}};
+  const {c="#555",t=confidence}=map[confidence]||{};
+  return <span title={t} style={{display:"inline-block",width:"7px",height:"7px",borderRadius:"50%",background:c,verticalAlign:"middle",marginLeft:"3px",flexShrink:0,cursor:"help"}}/>;
+}
+function OverrideBadge(){return <span title="Status manually overridden by user — not from AI scan" style={{background:"#1a0030",color:"#cc77ff",border:"1px dashed #cc77ff",padding:"1px 5px",fontSize:"8px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.4px",display:"inline-block",whiteSpace:"nowrap"}}>✎ OVERRIDE</span>;}
 function ChangeBadge({status}){
   if(status==="new")return <span style={{background:"#0d2914",color:C.newColor,border:"1px solid "+C.newColor,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap"}}>🆕 NEW</span>;
   if(status==="updated")return <span style={{background:"#0a1f29",color:C.updatedColor,border:"1px solid "+C.updatedColor,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap"}}>↻ UPDATED</span>;
@@ -83,8 +91,9 @@ function ChangeBadge({status}){
 const Flag=({country})=><span style={{fontSize:"14px",lineHeight:1}}>{country==="Australia"?"🇦🇺":country==="Brazil"?"🇧🇷":"🌐"}</span>;
 function StatCard({value,label,accent,color}){return <div><div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"30px",color:color||(accent?C.yellow:C.white),lineHeight:1}}>{value}</div><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",marginTop:"4px"}}>{label}</div></div>;}
 const SectionLabel=({children})=><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.yellow,textTransform:"uppercase",letterSpacing:"1.5px",fontWeight:"bold",marginBottom:"6px",borderBottom:"1px solid "+C.border,paddingBottom:"5px"}}>{children}</div>;
-function DetailPanel({project:p,onClose,onPinToggle}){
+function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverride}){
   if(!p)return null;
+  const [overrideDraft,setOverrideDraft]=React.useState(p._overrideMeta?.status||p.procurementStatus||"");
   const fmtCo=(v)=>Array.isArray(v)?v.filter(Boolean).join(", "):(v||"");
   const rows=[
     {label:"Summary",val:p.summary},
@@ -117,14 +126,39 @@ function DetailPanel({project:p,onClose,onPinToggle}){
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
         <div style={{padding:"20px",borderRight:"1px solid "+C.border}}>
-          <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"16px"}}>
+          <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"16px",alignItems:"center"}}>
             <Flag country={p.country}/><Badge text={p.priority} type="priority"/><Badge text={p.procurementStatus} type="status"/>
+            {p._overrideMeta&&<OverrideBadge/>}
+            <ConfidenceDot confidence={p.statusConfidence}/>
+            {p.statusConfidence==="low"&&<span style={{color:"#ff5555",fontSize:"10px",fontFamily:"Arial,sans-serif",fontWeight:"bold"}}>⚠ Verify status</span>}
+            {p._aiStatus&&p._aiStatus!==p.procurementStatus&&<span style={{color:"#888",fontSize:"10px",fontFamily:"Arial,sans-serif"}}>AI: {p._aiStatus}</span>}
           </div>
           <div style={{background:C.card,borderLeft:"3px solid "+C.yellow,padding:"12px 14px",marginBottom:"16px"}}>
             <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"6px"}}>⚡ MP ENGAGEMENT WINDOW</div>
             <div style={{color:C.white,fontFamily:"Arial,sans-serif",fontSize:"13px",fontWeight:"bold"}}>{p.mpEngagementWindow||"Review procurement timeline"}</div>
             <div style={{color:C.muted,fontFamily:"Arial,sans-serif",fontSize:"11px",marginTop:"4px"}}>Procurement start: {p.procurementStart||"TBD"}</div>
           </div>
+          <div style={{background:"#0d0010",border:"1px dashed #6633aa",padding:"12px 14px",marginBottom:"16px"}}>
+            <div style={{color:"#cc77ff",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"8px"}}>
+              ✎ STATUS OVERRIDE {p._overrideMeta&&<span style={{color:"#777",fontWeight:"normal",textTransform:"none",letterSpacing:0}}>· set {p._overrideMeta.date}</span>}
+            </div>
+            <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+              <select value={overrideDraft} onChange={e=>setOverrideDraft(e.target.value)} style={{background:"#0d0d0d",color:"#ccc",border:"1px solid #6633aa",padding:"5px 8px",fontFamily:"Arial,sans-serif",fontSize:"11px",cursor:"pointer"}}>
+                {["Pre-tender","Tender Active","Awarded","Under Construction","Planning"].map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+              <button onClick={()=>onSetOverride&&onSetOverride(p.projectName,overrideDraft)} style={{background:"#6633aa",color:"#fff",border:"none",padding:"5px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px"}}>SAVE</button>
+              {p._overrideMeta&&<button onClick={()=>onClearOverride&&onClearOverride(p.projectName)} style={{background:"none",color:"#888",border:"1px solid #333",padding:"5px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",textTransform:"uppercase",letterSpacing:"0.5px"}}>CLEAR</button>}
+            </div>
+            <div style={{color:"#555",fontFamily:"Arial,sans-serif",fontSize:"10px",marginTop:"6px",lineHeight:1.5}}>
+              {p._overrideMeta?`Your override: ${p._overrideMeta.status}. AI scan shows: ${p._aiStatus||"unknown"}.`:`AI scan status: ${p._aiStatus||p.procurementStatus}. Use this if you have ground-truth knowledge.`}
+            </div>
+          </div>
+          {p.statusNote&&(
+            <div style={{background:"#050d05",border:"1px solid #1a4a1a",padding:"10px 14px",marginBottom:"16px"}}>
+              <div style={{color:"#4ADE80",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"6px"}}>🔍 AI STATUS EVIDENCE</div>
+              <div style={{color:"#888",fontFamily:"Arial,sans-serif",fontSize:"11px",lineHeight:1.6}}>{p.statusNote}</div>
+            </div>
+          )}
           <div style={{marginBottom:"14px"}}>
             <SectionLabel>Location & Scale</SectionLabel>
             <div style={{color:"#aaa",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>
@@ -217,8 +251,8 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
                         </div>
                         <div style={{color:"#666",fontFamily:"Arial,sans-serif",fontSize:"11px",marginTop:"3px"}}>{p.location}{p.capacityMW?" · "+Number(p.capacityMW).toLocaleString()+" MW":""}{p.projectValue?" · "+p.projectValue:""}</div>
                       </div>
-                      <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
-                        <Badge text={p.priority} type="priority"/><Badge text={p.procurementStatus} type="status"/>
+                      <div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"center"}}>
+                        <Badge text={p.priority} type="priority"/><Badge text={p.procurementStatus} type="status"/><ConfidenceDot confidence={p.statusConfidence}/>{p._overrideMeta&&<OverrideBadge/>}
                       </div>
                     </div>
                     <div style={{marginTop:"10px",background:"#080800",borderLeft:"2px solid "+C.yellow,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,fontWeight:"bold"}}>⚡ {p.mpEngagementWindow||"Review procurement timeline"}</div>
@@ -238,6 +272,7 @@ function App(){
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [pins,setPins]=useState({});
+  const [overrides,setOverrides]=useState({});
   const [tab,setTab]=useState("table");
   const [selected,setSelected]=useState(null);
   const [fCountry,setFCountry]=useState("All");
@@ -246,11 +281,13 @@ function App(){
   const [fChange,setFChange]=useState("All");
   const [fHV,setFHV]=useState(false);
   const [fDC,setFDC]=useState(false);
+  const [fLowConf,setFLowConf]=useState(false);
   const [statusOpen,setStatusOpen]=useState(false);
   const [sortKey,setSortKey]=useState("priority");
   const [sortDir,setSortDir]=useState("asc");
   useEffect(()=>{
     try{const raw=localStorage.getItem(PIN_KEY);if(raw)setPins(JSON.parse(raw));}catch(e){}
+    try{const raw=localStorage.getItem(OVERRIDE_KEY);if(raw)setOverrides(JSON.parse(raw));}catch(e){}
     (async()=>{
       let cur=[],prev=[];
       try{
@@ -266,9 +303,15 @@ function App(){
   },[]);
   function savePins(np){setPins(np);try{localStorage.setItem(PIN_KEY,JSON.stringify(np));}catch(e){}}
   function pinToggle(p){const k=(p.projectName||"").toLowerCase();const np={...pins};if(np[k])delete np[k];else np[k]=true;savePins(np);}
+  function saveOverrides(no){setOverrides(no);try{localStorage.setItem(OVERRIDE_KEY,JSON.stringify(no));}catch(e){}}
+  function setStatusOverride(projectName,status){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={status,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
+  function clearStatusOverride(projectName){const k=(projectName||"").toLowerCase();const no={...overrides};delete no[k];saveOverrides(no);}
   const isPinned=(p)=>!!pins[(p.projectName||"").toLowerCase()];
   const order={High:0,Medium:1,Low:2};
-  const withPins=projects.map(p=>({...p,_pinned:isPinned(p)}));
+  const withPins=projects.map(p=>{
+    const ov=overrides[(p.projectName||"").toLowerCase()];
+    return {...p,_pinned:isPinned(p),_aiStatus:p.procurementStatus,_overrideMeta:ov||null,procurementStatus:ov?.status||p.procurementStatus};
+  });
   const displayed=withPins
     .filter(p=>fCountry==="All"||p.country===fCountry)
     .filter(p=>fPriority==="All"||p.priority===fPriority)
@@ -276,6 +319,7 @@ function App(){
     .filter(p=>fChange==="All"||p._changeStatus===(fChange==="New"?"new":"updated"))
     .filter(p=>!fHV||hasHVEquipment(p))
     .filter(p=>!fDC||isDataCentre(p))
+    .filter(p=>!fLowConf||(p.statusConfidence==="low"||!p.statusConfidence))
     .sort((a,b)=>{
       if(sortKey==="priority"){
         if(a._pinned!==b._pinned)return a._pinned?-1:1;
@@ -305,8 +349,8 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFHV(false);setFDC(false);}
-  const anyFilter=fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fHV||fDC;
+  function resetFilters(){setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFHV(false);setFDC(false);setFLowConf(false);}
+  const anyFilter=fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fHV||fDC||fLowConf;
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
   const fmt=iso=>{
@@ -335,6 +379,8 @@ function App(){
   const newCount=withPins.filter(p=>p._changeStatus==="new").length;
   const updCount=withPins.filter(p=>p._changeStatus==="updated").length;
   const pinCount=withPins.filter(p=>p._pinned).length;
+  const lowConfCount=withPins.filter(p=>p.statusConfidence==="low").length;
+  const overrideCount=withPins.filter(p=>p._overrideMeta).length;
   return (
     <div style={{background:C.black,minHeight:"100vh",color:C.white,fontFamily:"Arial,sans-serif"}}>
       <div style={{background:C.black,borderBottom:"3px solid "+C.yellow,padding:"18px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"16px"}}>
@@ -347,7 +393,7 @@ function App(){
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"1px"}}>Auto-updated weekly · Sundays</div>
-          <div style={{color:"#2e2e2e",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:"#555"}}>{fmt(lastScan)}</span></div>
+          {(()=>{const stale=lastScan&&(Date.now()-new Date(lastScan).getTime())>30*24*60*60*1000;return(<><div style={{color:"#2e2e2e",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:stale?"#ff5555":"#555"}}>{fmt(lastScan)}</span></div>{stale&&<div style={{color:"#ff5555",fontSize:"10px",fontFamily:"Arial,sans-serif",marginTop:"2px",fontWeight:"bold",letterSpacing:"0.5px"}}>⚠ DATA MAY BE STALE</div>}</>);})()}
         </div>
       </div>
       {loading&&<div style={{padding:"60px 28px",textAlign:"center",color:C.yellow,fontFamily:"'Courier New',monospace",fontSize:"13px"}}>Loading intelligence data…</div>}
@@ -362,6 +408,8 @@ function App(){
           {dcCount>0&&<StatCard value={"🖥 "+dcCount} label="Data Centres" color="#7cc4ff"/>}
           <StatCard value={highCount} label="High Priority"/>
           {(newCount>0||updCount>0)&&<><StatCard value={"🆕 "+newCount} label="New This Scan" color={C.newColor}/><StatCard value={"↻ "+updCount} label="Updated This Scan" color={C.updatedColor}/></>}
+          {lowConfCount>0&&<StatCard value={"⚠ "+lowConfCount} label="Low Confidence" color="#ff5555"/>}
+          {overrideCount>0&&<StatCard value={"✎ "+overrideCount} label="User Overrides" color="#cc77ff"/>}
         </div>
       )}
       {!loading&&(
@@ -400,6 +448,7 @@ function App(){
             </div>
             <button onClick={()=>setFHV(v=>!v)} style={{background:fHV?C.yellow:"#0d0d0d",color:fHV?C.black:"#666",border:"1px solid "+(fHV?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHV?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚡ HV EQUIP ONLY</button>
             <button onClick={()=>setFDC(v=>!v)} style={{background:fDC?"#7cc4ff":"#0d0d0d",color:fDC?C.black:"#666",border:"1px solid "+(fDC?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fDC?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>🖥 DATA CENTRES ONLY</button>
+            <button onClick={()=>setFLowConf(v=>!v)} style={{background:fLowConf?"#ff5555":"#0d0d0d",color:fLowConf?C.white:"#666",border:"1px solid "+(fLowConf?"#ff5555":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fLowConf?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚠ UNVERIFIED ONLY</button>
             {anyFilter&&<button onClick={resetFilters} style={{background:"none",border:"1px solid #333",color:"#999",padding:"6px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>✕ RESET FILTERS</button>}
           </div>
         </div>
@@ -416,6 +465,9 @@ function App(){
                 <span style={{color:"#7cc4ff"}}>🖥 data centre</span>
                 <span style={{color:C.newColor}}>🆕 new</span>
                 <span style={{color:C.updatedColor}}>↻ updated</span>
+                <span style={{color:"#cc77ff"}}>✎ overridden</span>
+                <span><span style={{display:"inline-block",width:"7px",height:"7px",borderRadius:"50%",background:"#4ADE80",verticalAlign:"middle"}}></span> high conf</span>
+                <span><span style={{display:"inline-block",width:"7px",height:"7px",borderRadius:"50%",background:"#ff5555",verticalAlign:"middle"}}></span> low conf — verify</span>
               </div>
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1040px",tableLayout:"fixed"}}>
@@ -446,7 +498,7 @@ function App(){
                           </td>
                           <td onClick={open} style={TD(hl(p,"location",{color:"#777",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"}))}>{p.location}</td>
                           <td onClick={open} style={TD(hl(p,"procurementStart",{color:C.yellow,fontWeight:"bold",padding:"9px 8px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3,fontSize:"11px"}))}>{p.procurementStart||"TBD"}</td>
-                          <td onClick={open} style={TD(hl(p,"procurementStatus",{}))}><Badge text={p.procurementStatus} type="status"/></td>
+                          <td onClick={open} style={TD(hl(p,"procurementStatus",{}))}><div style={{display:"flex",alignItems:"center",gap:"4px",flexWrap:"wrap"}}><Badge text={p.procurementStatus} type="status"/><ConfidenceDot confidence={p.statusConfidence}/>{p._overrideMeta&&<OverrideBadge/>}</div></td>
                           <td onClick={open} style={TD(hl(p,"capacityMW",{color:C.yellow,whiteSpace:"nowrap",textAlign:"right",fontWeight:"bold",fontSize:"11px"}))}>{p.capacityMW?Number(p.capacityMW).toLocaleString():"—"}</td>
                           <td onClick={open} style={TD({color:"#888",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{(p.assetTypes||[]).join(", ")}</td>
                           <td onClick={open} style={TD({color:"#aaa",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.owner)||(p.companies&&!p.epcContractor&&!p.financiers?coList(p.companies):"")||"—"}</td>
@@ -463,7 +515,7 @@ function App(){
           ):tab==="timeline"?(
             <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
           ):(
-            selected?<DetailPanel project={{...selected,_pinned:isPinned(selected)}} onClose={closeDetail} onPinToggle={pinToggle}/>:(
+            selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride}/>:(
               <div style={{textAlign:"center",padding:"100px 20px"}}>
                 <div style={{fontSize:"48px",opacity:0.08,marginBottom:"16px"}}>👆</div>
                 <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"14px",color:"#1e1e1e",textTransform:"uppercase",letterSpacing:"3px"}}>NO PROJECT SELECTED</div>
