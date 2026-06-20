@@ -38,6 +38,23 @@ function isDataCentre(p){
   const hay=[...(p.assetTypes||[]),p.summary||"",p.projectName||"",...(p.companies||[])].join(" ").toLowerCase();
   return /data ?cent(er|re)|hyperscale|\bdc\b|colocation|colo\b|cloud campus/.test(hay);
 }
+function parseProcurementDate(s){
+  if(!s||s==="TBD"||s==="")return null;
+  const qm=s.match(/Q([1-4])\s*(\d{4})/i);
+  if(qm){const mo=[0,3,6,9][parseInt(qm[1])-1];return new Date(parseInt(qm[2]),mo,1);}
+  const hm=s.match(/H([12])\s*(\d{4})/i);
+  if(hm){return new Date(parseInt(hm[2]),hm[1]==="1"?0:6,1);}
+  const ym=s.match(/^(\d{4})$/);
+  if(ym)return new Date(parseInt(ym[1]),0,1);
+  return null;
+}
+function isStaleConstruction(p){
+  if((p.procurementStatus||"")!=="Under Construction")return false;
+  const d=parseProcurementDate(p.procurementStart);
+  if(!d)return false;
+  const cutoff=new Date();cutoff.setFullYear(cutoff.getFullYear()-1);
+  return d<cutoff;
+}
 function computeChangeStatus(cur, prev){
   const prevMap=new Map((prev||[]).map(p=>[p.projectName.toLowerCase(),p]));
   const watch=["procurementStatus","procurementStart","priority","capacityMW","mpEngagementWindow","projectValue"];
@@ -281,6 +298,7 @@ function App(){
   const [fStatus,setFStatus]=useState([]);
   const [fChange,setFChange]=useState("All");
   const [fHV,setFHV]=useState(false);
+  const [fHideStale,setFHideStale]=useState(true);
   const [fDC,setFDC]=useState(false);
   const [fLowConf,setFLowConf]=useState(false);
   const [statusOpen,setStatusOpen]=useState(false);
@@ -322,6 +340,7 @@ function App(){
     .filter(p=>!fHV||hasHVEquipment(p))
     .filter(p=>!fDC||isDataCentre(p))
     .filter(p=>!fLowConf||(p.statusConfidence==="low"||!p.statusConfidence))
+    .filter(p=>!fHideStale||!isStaleConstruction(p))
     .sort((a,b)=>{
       if(sortKey==="priority"){
         if(a._pinned!==b._pinned)return a._pinned?-1:1;
@@ -351,7 +370,7 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFSearch("");setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFHV(false);setFDC(false);setFLowConf(false);}
+  function resetFilters(){setFSearch("");setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFHV(false);setFDC(false);setFLowConf(false);setFHideStale(true);}
   const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fHV||fDC||fLowConf;
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
@@ -452,6 +471,7 @@ function App(){
             <button onClick={()=>setFHV(v=>!v)} style={{background:fHV?C.yellow:"#0d0d0d",color:fHV?C.black:"#666",border:"1px solid "+(fHV?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHV?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚡ HV EQUIP ONLY</button>
             <button onClick={()=>setFDC(v=>!v)} style={{background:fDC?"#7cc4ff":"#0d0d0d",color:fDC?C.black:"#666",border:"1px solid "+(fDC?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fDC?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>🖥 DATA CENTRES ONLY</button>
             <button onClick={()=>setFLowConf(v=>!v)} style={{background:fLowConf?"#ff5555":"#0d0d0d",color:fLowConf?C.white:"#666",border:"1px solid "+(fLowConf?"#ff5555":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fLowConf?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚠ UNVERIFIED ONLY</button>
+            <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#666":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Under Construction projects where equipment procurement started more than 1 year ago">{fHideStale?"🚧 SHOW STALE UC":"🚧 HIDE STALE UC"}</button>
             {anyFilter&&<button onClick={resetFilters} style={{background:"none",border:"1px solid #333",color:"#999",padding:"6px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>✕ RESET FILTERS</button>}
           </div>
         </div>
