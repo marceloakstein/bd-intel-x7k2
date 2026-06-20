@@ -49,30 +49,23 @@ function parseProcurementDate(s){
   return null;
 }
 function isStale(p){
-  const status=p.procurementStatus||"";
+  // Only hide Under Construction projects where equipment procurement started >12 months ago.
+  // Planning and Pre-tender are NEVER hidden — they always represent future BD opportunity.
+  if((p.procurementStatus||"")!=="Under Construction")return false;
   const d=parseProcurementDate(p.procurementStart);
   if(!d)return false;
-  const now=new Date();
-  // Under Construction: hide if equipment procurement started >12 months ago
-  if(status==="Under Construction"){
-    const cut12=new Date();cut12.setFullYear(cut12.getFullYear()-1);
-    return d<cut12;
-  }
-  // Planning / Pre-tender: hide if procurement date passed >3 months ago (status never advanced)
-  if(status==="Planning"||status==="Pre-tender"){
-    const cut3=new Date();cut3.setMonth(cut3.getMonth()-3);
-    return d<cut3;
-  }
-  return false;
+  const cut=new Date();cut.setFullYear(cut.getFullYear()-1);
+  return d<cut;
 }
 function hasDateStatusMismatch(p){
+  // Informational flag only (DATE? badge) — no hiding.
+  // Fires when Planning/Pre-tender has a procurementStart already in the past,
+  // suggesting Gemini's date or status may need verification.
   const status=p.procurementStatus||"";
   if(status!=="Planning"&&status!=="Pre-tender")return false;
   const d=parseProcurementDate(p.procurementStart);
   if(!d)return false;
-  // Show DATE? only for borderline cases (0-3 months past) — older ones get hidden by isStale
-  const cut3=new Date();cut3.setMonth(cut3.getMonth()-3);
-  return d<new Date()&&d>=cut3;
+  return d<new Date();
 }
 function computeChangeStatus(cur, prev){
   const prevMap=new Map((prev||[]).map(p=>[p.projectName.toLowerCase(),p]));
