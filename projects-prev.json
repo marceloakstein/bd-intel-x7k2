@@ -5,7 +5,7 @@
       "location": "Central-West Orana, NSW",
       "country": "Australia",
       "procurementStart": "Q4 2023 (network), Q3 2024 (generation)",
-      "procurementStatus": "Tender Active",
+      "procurementStatus": "Under Construction",
       "assetTypes": [
         "REZ",
         "HV Transmission",
@@ -13,9 +13,12 @@
         "Wind",
         "BESS"
       ],
+      "owner": ["EnergyCo NSW"],
+      "epcContractor": ["ACEREZ Consortium"],
       "companies": [
         "EnergyCo NSW",
-        "Transgrid"
+        "Transgrid",
+        "ACEREZ Consortium"
       ],
       "fundingSources": [
         "NSW Government",
@@ -23,7 +26,7 @@
       ],
       "projectValue": "A$10 Billion+",
       "capacityMW": 6000,
-      "mpEngagementWindow": "H2 2024 - H2 2027",
+      "mpEngagementWindow": "H1 2025 - H2 2027",
       "mpServices": [
         "Factory Acceptance Testing",
         "QAQC Inspection",
@@ -32,7 +35,9 @@
       ],
       "priority": "High",
       "sourceUrl": "https://www.energyco.nsw.gov.au/renewable-energy-zones/central-west-orana-rez",
-      "summary": "Development of the Central-West Orana Renewable Energy Zone, including significant new HV transmission infrastructure (lines and substations) and associated generation projects (solar, wind, BESS). Multiple tenders are active for network components and generation. High opportunity for HV transformers, circuit breakers, and switchgear FAT and inspection."
+      "statusNote": "Under construction — ACEREZ consortium engaged. Network EPC awarded and construction underway. [User-verified 2026-06]",
+      "statusConfidence": "high",
+      "summary": "The Central-West Orana REZ is now under construction. The ACEREZ consortium holds the EPC contract for the network transmission infrastructure, including new HV transmission lines, substations, and associated switchgear. Generation projects (solar, wind, BESS) are progressing concurrently. Active MP opportunities for HV transformer FAT, circuit breaker inspection, QAQC, and site supervision throughout the construction phase."
     },
     {
       "projectName": "Hunter-Central Coast REZ Transmission",
