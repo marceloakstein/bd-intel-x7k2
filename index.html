@@ -120,9 +120,10 @@ function ChangeBadge({status}){
 const Flag=({country})=><span style={{fontSize:"14px",lineHeight:1}}>{country==="Australia"?"🇦🇺":country==="Brazil"?"🇧🇷":"🌐"}</span>;
 function StatCard({value,label,accent,color}){return <div><div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"30px",color:color||(accent?C.yellow:C.white),lineHeight:1}}>{value}</div><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",marginTop:"4px"}}>{label}</div></div>;}
 const SectionLabel=({children})=><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.yellow,textTransform:"uppercase",letterSpacing:"1.5px",fontWeight:"bold",marginBottom:"6px",borderBottom:"1px solid "+C.border,paddingBottom:"5px"}}>{children}</div>;
-function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverride}){
+function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverride,onSetProcStart}){
   if(!p)return null;
   const [overrideDraft,setOverrideDraft]=React.useState(p._overrideMeta?.status||p.procurementStatus||"");
+  const [procStartDraft,setProcStartDraft]=React.useState(p._overrideMeta?.procurementStart||p._aiProcurementStart||"");
   const fmtCo=(v)=>Array.isArray(v)?v.filter(Boolean).join(", "):(v||"");
   const rows=[
     {label:"Summary",val:p.summary},
@@ -169,17 +170,24 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
           </div>
           <div style={{background:"#0d0010",border:"1px dashed #6633aa",padding:"12px 14px",marginBottom:"16px"}}>
             <div style={{color:"#cc77ff",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"8px"}}>
-              ✎ STATUS OVERRIDE {p._overrideMeta&&<span style={{color:"#777",fontWeight:"normal",textTransform:"none",letterSpacing:0}}>· set {p._overrideMeta.date}</span>}
+              ✎ MANUAL OVERRIDES {p._overrideMeta&&<span style={{color:"#777",fontWeight:"normal",textTransform:"none",letterSpacing:0}}>· saved {p._overrideMeta.date}</span>}
             </div>
-            <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{color:"#888",fontFamily:"Arial,sans-serif",fontSize:"10px",marginBottom:"4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Status</div>
+            <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",marginBottom:"10px"}}>
               <select value={overrideDraft} onChange={e=>setOverrideDraft(e.target.value)} style={{background:"#0d0d0d",color:"#ccc",border:"1px solid #6633aa",padding:"5px 8px",fontFamily:"Arial,sans-serif",fontSize:"11px",cursor:"pointer"}}>
                 {["Pre-tender","Tender Active","Awarded","Under Construction","Planning"].map(s=><option key={s} value={s}>{s}</option>)}
               </select>
               <button onClick={()=>onSetOverride&&onSetOverride(p.projectName,overrideDraft)} style={{background:"#6633aa",color:"#fff",border:"none",padding:"5px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px"}}>SAVE</button>
-              {p._overrideMeta&&<button onClick={()=>onClearOverride&&onClearOverride(p.projectName)} style={{background:"none",color:"#888",border:"1px solid #333",padding:"5px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",textTransform:"uppercase",letterSpacing:"0.5px"}}>CLEAR</button>}
             </div>
-            <div style={{color:"#555",fontFamily:"Arial,sans-serif",fontSize:"10px",marginTop:"6px",lineHeight:1.5}}>
-              {p._overrideMeta?`Your override: ${p._overrideMeta.status}. AI scan shows: ${p._aiStatus||"unknown"}.`:`AI scan status: ${p._aiStatus||p.procurementStatus}. Use this if you have ground-truth knowledge.`}
+            <div style={{color:"#888",fontFamily:"Arial,sans-serif",fontSize:"10px",marginBottom:"4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Equip. Procurement Date</div>
+            <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",marginBottom:"10px"}}>
+              <input value={procStartDraft} onChange={e=>setProcStartDraft(e.target.value)} placeholder="e.g. Q3 2026 or H2 2027" style={{background:"#0d0d0d",color:"#ccc",border:"1px solid #6633aa",padding:"5px 8px",fontFamily:"Arial,sans-serif",fontSize:"11px",outline:"none",width:"160px"}}/>
+              <button onClick={()=>onSetProcStart&&onSetProcStart(p.projectName,procStartDraft)} style={{background:"#6633aa",color:"#fff",border:"none",padding:"5px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px"}}>SAVE</button>
+              {p._overrideMeta?.procurementStart&&<span style={{color:"#cc77ff",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>✎ {p._overrideMeta.procurementStart}</span>}
+            </div>
+            {p._overrideMeta&&<button onClick={()=>onClearOverride&&onClearOverride(p.projectName)} style={{background:"none",color:"#888",border:"1px solid #333",padding:"5px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"6px"}}>CLEAR ALL OVERRIDES</button>}
+            <div style={{color:"#555",fontFamily:"Arial,sans-serif",fontSize:"10px",marginTop:"4px",lineHeight:1.5}}>
+              {p._overrideMeta?`AI scan: status=${p._aiStatus||"?"}, proc. date=${p._aiProcurementStart||"?"}. Your values take precedence.`:"Use these fields when you have reliable ground-truth information."}
             </div>
           </div>
           {p.statusNote&&(
@@ -335,13 +343,14 @@ function App(){
   function savePins(np){setPins(np);try{localStorage.setItem(PIN_KEY,JSON.stringify(np));}catch(e){}}
   function pinToggle(p){const k=(p.projectName||"").toLowerCase();const np={...pins};if(np[k])delete np[k];else np[k]=true;savePins(np);}
   function saveOverrides(no){setOverrides(no);try{localStorage.setItem(OVERRIDE_KEY,JSON.stringify(no));}catch(e){}}
-  function setStatusOverride(projectName,status){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={status,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
+  function setStatusOverride(projectName,status){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={...(no[k]||{}),status,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
+  function setProcStartOverride(projectName,procStart){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={...(no[k]||{}),procurementStart:procStart,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
   function clearStatusOverride(projectName){const k=(projectName||"").toLowerCase();const no={...overrides};delete no[k];saveOverrides(no);}
   const isPinned=(p)=>!!pins[(p.projectName||"").toLowerCase()];
   const order={High:0,Medium:1,Low:2};
   const withPins=projects.map(p=>{
     const ov=overrides[(p.projectName||"").toLowerCase()];
-    return {...p,_pinned:isPinned(p),_aiStatus:p.procurementStatus,_overrideMeta:ov||null,procurementStatus:ov?.status||p.procurementStatus};
+    return {...p,_pinned:isPinned(p),_aiStatus:p.procurementStatus,_aiProcurementStart:p.procurementStart,_overrideMeta:ov||null,procurementStatus:ov?.status||p.procurementStatus,procurementStart:ov?.procurementStart||p.procurementStart};
   });
   const displayed=withPins
     .filter(p=>{if(!fSearch.trim())return true;const q=fSearch.trim().toLowerCase();const hay=[p.projectName,p.location,p.summary,...(p.companies||[]),...(p.assetTypes||[]),...[p.owner].flat(),...[p.epcContractor].flat()].flat().join(" ").toLowerCase();return hay.includes(q);})
@@ -550,7 +559,7 @@ function App(){
           ):tab==="timeline"?(
             <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
           ):(
-            selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride}/>:(
+            selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride}/>:(
               <div style={{textAlign:"center",padding:"100px 20px"}}>
                 <div style={{fontSize:"48px",opacity:0.08,marginBottom:"16px"}}>👆</div>
                 <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"14px",color:"#1e1e1e",textTransform:"uppercase",letterSpacing:"3px"}}>NO PROJECT SELECTED</div>
