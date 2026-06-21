@@ -49,12 +49,12 @@ function parseProcurementDate(s){
   return null;
 }
 function isStale(p){
-  // Only hide Under Construction projects where equipment procurement started >12 months ago.
+  // Only hide Under Construction projects where equipment procurement started >6 months ago.
   // Planning and Pre-tender are NEVER hidden — they always represent future BD opportunity.
   if((p.procurementStatus||"")!=="Under Construction")return false;
   const d=parseProcurementDate(p.procurementStart);
   if(!d)return false;
-  const cut=new Date();cut.setFullYear(cut.getFullYear()-1);
+  const cut=new Date();cut.setMonth(cut.getMonth()-6);
   return d<cut;
 }
 function hasDateStatusMismatch(p){
