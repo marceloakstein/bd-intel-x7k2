@@ -316,8 +316,9 @@ function App(){
   const [fChange,setFChange]=useState("All");
   const [fHideStale,setFHideStale]=useState(true);
   const [fDC,setFDC]=useState(false);
-  const [fLowConf,setFLowConf]=useState(false);
+  const [fProcStart,setFProcStart]=useState([]);
   const [statusOpen,setStatusOpen]=useState(false);
+  const [procStartOpen,setProcStartOpen]=useState(false);
   const [sortKey,setSortKey]=useState("priority");
   const [sortDir,setSortDir]=useState("asc");
   useEffect(()=>{
@@ -355,7 +356,7 @@ function App(){
     .filter(p=>fStatus.length===0||fStatus.includes(p.procurementStatus))
     .filter(p=>fChange==="All"||p._changeStatus===(fChange==="New"?"new":"updated"))
     .filter(p=>!fDC||isDataCentre(p))
-    .filter(p=>!fLowConf||(p.statusConfidence==="low"||!p.statusConfidence))
+    .filter(p=>fProcStart.length===0||fProcStart.includes(p.procurementStart))
     .filter(p=>!fHideStale||!isStale(p))
     .sort((a,b)=>{
       if(sortKey==="priority"){
@@ -389,8 +390,8 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFSearch("");setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFDC(false);setFLowConf(false);setFHideStale(true);}
-  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fDC||fLowConf;
+  function resetFilters(){setFSearch("");setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFDC(false);setFProcStart([]);setFHideStale(true);}
+  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fDC||fProcStart.length>0;
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
   const fmt=iso=>{
@@ -486,7 +487,21 @@ function App(){
               )}
             </div>
 <button onClick={()=>setFDC(v=>!v)} style={{background:fDC?"#7cc4ff":"#0d0d0d",color:fDC?C.black:"#666",border:"1px solid "+(fDC?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fDC?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>🖥 DATA CENTRES ONLY</button>
-            <button onClick={()=>setFLowConf(v=>!v)} style={{background:fLowConf?"#ff5555":"#0d0d0d",color:fLowConf?C.white:"#666",border:"1px solid "+(fLowConf?"#ff5555":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fLowConf?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>⚠ UNVERIFIED ONLY</button>
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setProcStartOpen(o=>!o)} style={{background:fProcStart.length?C.yellow:"#0d0d0d",color:fProcStart.length?C.black:"#666",border:"1px solid "+(fProcStart.length?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fProcStart.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
+                {fProcStart.length?"PROC. DATE ("+fProcStart.length+")":"ALL PROC. DATES"} ▾
+              </button>
+              {procStartOpen&&(
+                <div style={{position:"absolute",top:"32px",left:0,background:"#0d0d0d",border:"1px solid "+C.border,zIndex:50,minWidth:"160px",maxHeight:"260px",overflowY:"auto",padding:"6px 0",boxShadow:"0 4px 12px rgba(0,0,0,0.5)"}}>
+                  {[...new Set(withPins.map(p=>p.procurementStart).filter(v=>v&&v!=="TBD"&&v!==""))].sort((a,b)=>{const da=parseProcurementDate(a),db=parseProcurementDate(b);return (da?da.getTime():Infinity)-(db?db.getTime():Infinity);}).map(s=>(
+                    <label key={s} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 12px",cursor:"pointer",fontFamily:"Arial,sans-serif",fontSize:"11px",color:fProcStart.includes(s)?C.yellow:"#888"}}>
+                      <input type="checkbox" checked={fProcStart.includes(s)} onChange={()=>setFProcStart(cur=>cur.includes(s)?cur.filter(x=>x!==s):[...cur,s])} style={{accentColor:C.yellow}}/>
+                      {s}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
             <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#666":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Hides: Under Construction with procurement >12 months ago; Planning/Pre-tender with procurement date passed >3 months ago">{fHideStale?"🚧 SHOW STALE":"🚧 HIDE STALE"}</button>
             {anyFilter&&<button onClick={resetFilters} style={{background:"none",border:"1px solid #333",color:"#999",padding:"6px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>✕ RESET FILTERS</button>}
           </div>
