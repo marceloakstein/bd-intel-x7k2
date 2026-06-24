@@ -128,7 +128,7 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
     {label:"Summary",val:p.summary},
     {label:"Asset Types",val:(p.assetTypes||[]).join(", ")},
     {label:"Owner / Developer",val:fmtCo(p.owner)},
-    {label:"EPC Contractor",val:fmtCo(p.epcContractor)},
+    {label:["Planning","Pre-tender","Tender Active"].includes(p.procurementStatus)?"Tenderer(s)":"EPC Contractor",val:fmtCo(p.epcContractor)},
     {label:"Financiers / Lenders",val:fmtCo(p.financiers||p.fundingSources)},
     {label:"All Companies",val:(!p.owner&&!p.epcContractor&&!p.financiers)?fmtCo(p.companies):""},
     {label:"MP Services",val:(p.mpServices||[]).join(", ")},
@@ -532,7 +532,7 @@ function App(){
                     <ColHead label="MW" k="capacityMW" style={{width:"58px"}}/>
                     <ColHead label="Key Assets" k="assetTypes" style={{width:"120px"}}/>
                     <ColHead label="Owner / Developer" k="owner" style={{width:"130px"}}/>
-                    <ColHead label="EPC" k="epcContractor" style={{width:"120px"}}/>
+                    <ColHead label="EPC / TENDERER" k="epcContractor" style={{width:"120px"}}/>
                     <ColHead label="Engage By" k="mpEngagementWindow" style={{width:"130px"}}/>
                     <ColHead label="Pri." k="priority" style={{width:"62px"}}/>
                   </tr></thead>
