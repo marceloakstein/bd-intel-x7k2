@@ -379,6 +379,10 @@ function App(){
       }
       let av,bv;
       if(sortKey==="capacityMW"){av=Number(a.capacityMW)||0;bv=Number(b.capacityMW)||0;}
+      else if(sortKey==="procurementStart"){
+        const da=parseProcurementDate(a.procurementStart),db=parseProcurementDate(b.procurementStart);
+        av=da?da.getTime():Infinity;bv=db?db.getTime():Infinity;
+      }
       else{av=String(a[sortKey]||"");bv=String(b[sortKey]||"");}
       if(av<bv)return sortDir==="asc"?-1:1;
       if(av>bv)return sortDir==="asc"?1:-1;
