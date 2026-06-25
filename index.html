@@ -437,11 +437,11 @@ function App(){
             <span style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:900,fontSize:"28px",color:C.yellow,letterSpacing:"5px"}}>MADE</span>
             <span style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:900,fontSize:"28px",color:C.white,letterSpacing:"4px"}}>PARTNERS</span>
           </div>
-          <div style={{color:"#3a3a3a",fontFamily:"Arial,sans-serif",fontSize:"10px",letterSpacing:"3.5px",textTransform:"uppercase",marginTop:"4px"}}>RENEWABLE ENERGY MARKET INTELLIGENCE · AUSTRALIA & BRAZIL</div>
+          <div style={{color:"#777",fontFamily:"Arial,sans-serif",fontSize:"10px",letterSpacing:"3.5px",textTransform:"uppercase",marginTop:"4px"}}>RENEWABLE ENERGY MARKET INTELLIGENCE · AUSTRALIA & BRAZIL</div>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"1px"}}>Auto-updated weekly · Sundays</div>
-          {(()=>{const stale=lastScan&&(Date.now()-new Date(lastScan).getTime())>30*24*60*60*1000;return(<><div style={{color:"#2e2e2e",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:stale?"#ff5555":"#555"}}>{fmt(lastScan)}</span></div>{stale&&<div style={{color:"#ff5555",fontSize:"10px",fontFamily:"Arial,sans-serif",marginTop:"2px",fontWeight:"bold",letterSpacing:"0.5px"}}>⚠ DATA MAY BE STALE</div>}</>);})()}
+          {(()=>{const stale=lastScan&&(Date.now()-new Date(lastScan).getTime())>30*24*60*60*1000;return(<><div style={{color:"#777",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:stale?"#ff5555":"#aaa"}}>{fmt(lastScan)}</span></div>{stale&&<div style={{color:"#ff5555",fontSize:"10px",fontFamily:"Arial,sans-serif",marginTop:"2px",fontWeight:"bold",letterSpacing:"0.5px"}}>⚠ DATA MAY BE STALE</div>}</>);})()}
         </div>
       </div>
       {loading&&<div style={{padding:"60px 28px",textAlign:"center",color:C.yellow,fontFamily:"'Courier New',monospace",fontSize:"13px"}}>Loading intelligence data…</div>}
@@ -463,7 +463,7 @@ function App(){
         <div style={{background:"#060606",padding:"0 28px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"stretch",flexWrap:"wrap"}}>
           <div style={{display:"flex"}}>
             {[{key:"table",label:"PROJECT TABLE"},{key:"timeline",label:"ENGAGEMENT TIMELINE"},{key:"detail",label:"SELECTED PROJECT"}].map(t=>(
-              <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#1e1e1e":"#3a3a3a",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
+              <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#333":"#888",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
                 {t.label}{t.key==="detail"&&selected&&<span style={{background:C.yellow,color:C.black,fontSize:"8px",padding:"1px 5px",borderRadius:"2px"}}>1</span>}
               </button>
             ))}
@@ -475,12 +475,12 @@ function App(){
               {val:fPriority,set:setFPriority,opts:["All","High","Medium","Low"],ph:"ALL PRIORITIES"},
               {val:fChange,set:setFChange,opts:["All","New","Updated"],ph:"ALL CHANGES"},
             ].map((f,i)=>(
-              <select key={i} value={f.val} onChange={e=>f.set(e.target.value)} style={{background:"#0d0d0d",color:"#666",border:"1px solid "+C.border,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
+              <select key={i} value={f.val} onChange={e=>f.set(e.target.value)} style={{background:"#0d0d0d",color:"#bbb",border:"1px solid "+C.border,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
                 {f.opts.map(o=><option key={o} value={o}>{o==="All"?f.ph:o.toUpperCase()}</option>)}
               </select>
             ))}
             <div style={{position:"relative"}}>
-              <button onClick={()=>setStatusOpen(o=>!o)} style={{background:fStatus.length?C.yellow:"#0d0d0d",color:fStatus.length?C.black:"#666",border:"1px solid "+(fStatus.length?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fStatus.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
+              <button onClick={()=>setStatusOpen(o=>!o)} style={{background:fStatus.length?C.yellow:"#0d0d0d",color:fStatus.length?C.black:"#bbb",border:"1px solid "+(fStatus.length?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fStatus.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
                 {fStatus.length?"STATUS ("+fStatus.length+")":"ALL STATUSES"} ▾
               </button>
               {statusOpen&&(
@@ -494,9 +494,9 @@ function App(){
                 </div>
               )}
             </div>
-<button onClick={()=>setFDC(v=>!v)} style={{background:fDC?"#7cc4ff":"#0d0d0d",color:fDC?C.black:"#666",border:"1px solid "+(fDC?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fDC?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>🖥 DATA CENTRES ONLY</button>
+<button onClick={()=>setFDC(v=>!v)} style={{background:fDC?"#7cc4ff":"#0d0d0d",color:fDC?C.black:"#bbb",border:"1px solid "+(fDC?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fDC?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>🖥 DATA CENTRES ONLY</button>
             <div style={{position:"relative"}}>
-              <button onClick={()=>setProcStartOpen(o=>!o)} style={{background:fProcStart.length?C.yellow:"#0d0d0d",color:fProcStart.length?C.black:"#666",border:"1px solid "+(fProcStart.length?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fProcStart.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
+              <button onClick={()=>setProcStartOpen(o=>!o)} style={{background:fProcStart.length?C.yellow:"#0d0d0d",color:fProcStart.length?C.black:"#bbb",border:"1px solid "+(fProcStart.length?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fProcStart.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
                 {fProcStart.length?"PROC. DATE ("+fProcStart.length+")":"ALL PROC. DATES"} ▾
               </button>
               {procStartOpen&&(
@@ -510,7 +510,7 @@ function App(){
                 </div>
               )}
             </div>
-            <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#666":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Hides: Under Construction with procurement >12 months ago; Planning/Pre-tender with procurement date passed >3 months ago">{fHideStale?"🚧 SHOW STALE":"🚧 HIDE STALE"}</button>
+            <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#bbb":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Hides: Under Construction with procurement >12 months ago; Planning/Pre-tender with procurement date passed >3 months ago">{fHideStale?"🚧 SHOW STALE":"🚧 HIDE STALE"}</button>
             {anyFilter&&<button onClick={resetFilters} style={{background:"none",border:"1px solid #333",color:"#999",padding:"6px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>✕ RESET FILTERS</button>}
           </div>
         </div>
@@ -521,7 +521,7 @@ function App(){
             <div style={{textAlign:"center",padding:"100px 20px",color:"#2a2a2a",fontFamily:"Arial,sans-serif"}}>No project data found yet.</div>
           ):tab==="table"?(
             <div>
-              <div style={{color:"#333",fontFamily:"Arial,sans-serif",fontSize:"11px",marginBottom:"12px",display:"flex",gap:"16px",flexWrap:"wrap"}}>
+              <div style={{color:"#888",fontFamily:"Arial,sans-serif",fontSize:"11px",marginBottom:"12px",display:"flex",gap:"16px",flexWrap:"wrap"}}>
                 <span>Showing {displayed.length} of {withPins.length} projects — click a row for details · 📌 pin</span>
 <span style={{color:"#7cc4ff"}}>🖥 data centre</span>
                 <span style={{color:C.newColor}}>🆕 new</span>
@@ -557,14 +557,14 @@ function App(){
                               <Flag country={p.country}/><span style={{fontSize:"12px"}}>{p.projectName}</span>{isDataCentre(p)&&<DCBadge/>}<ChangeBadge status={p._changeStatus}/>
                             </div>
                           </td>
-                          <td onClick={open} style={TD(hl(p,"location",{color:"#777",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"}))}>{p.location}</td>
+                          <td onClick={open} style={TD(hl(p,"location",{color:"#ccc",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"}))}>{p.location}</td>
                           <td onClick={open} style={TD(hl(p,"procurementStart",{color:C.yellow,fontWeight:"bold",padding:"9px 8px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3,fontSize:"11px"}))}>{p.procurementStart||"TBD"}</td>
                           <td onClick={open} style={TD(hl(p,"procurementStatus",{}))}><div style={{display:"flex",alignItems:"center",gap:"4px",flexWrap:"wrap"}}><Badge text={p.procurementStatus} type="status"/><ConfidenceDot confidence={p.statusConfidence}/>{p._overrideMeta&&<OverrideBadge/>}{hasDateStatusMismatch(p)&&<span title={"Equip. proc. date ("+p.procurementStart+") already passed but status is still "+p.procurementStatus+" — verify with source"} style={{color:"#f97316",fontSize:"9px",fontWeight:"bold",cursor:"help",letterSpacing:"0.3px",fontFamily:"Arial,sans-serif"}}>DATE?</span>}</div></td>
                           <td onClick={open} style={TD(hl(p,"capacityMW",{color:C.yellow,whiteSpace:"nowrap",textAlign:"right",fontWeight:"bold",fontSize:"11px"}))}>{p.capacityMW?Number(p.capacityMW).toLocaleString():"—"}</td>
-                          <td onClick={open} style={TD({color:"#888",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{(p.assetTypes||[]).join(", ")}</td>
-                          <td onClick={open} style={TD({color:"#aaa",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.owner)||(p.companies&&!p.epcContractor&&!p.financiers?coList(p.companies):"")||"—"}</td>
-                          <td onClick={open} style={TD({color:"#999",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.epcContractor)||coList(p.companies)||"—"}</td>
-                          <td onClick={open} style={TD(hl(p,"mpEngagementWindow",{color:"#bbb",fontWeight:"bold",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3}))}>{p.mpEngagementWindow||"—"}</td>
+                          <td onClick={open} style={TD({color:"#ccc",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{(p.assetTypes||[]).join(", ")}</td>
+                          <td onClick={open} style={TD({color:"#ddd",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.owner)||(p.companies&&!p.epcContractor&&!p.financiers?coList(p.companies):"")||"—"}</td>
+                          <td onClick={open} style={TD({color:"#ccc",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.epcContractor)||coList(p.companies)||"—"}</td>
+                          <td onClick={open} style={TD(hl(p,"mpEngagementWindow",{color:"#eee",fontWeight:"bold",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3}))}>{p.mpEngagementWindow||"—"}</td>
                           <td onClick={open} style={TD(hl(p,"priority",{}))}><Badge text={p.priority} type="priority"/></td>
                         </tr>
                       );
@@ -587,7 +587,7 @@ function App(){
         </div>
       )}
       <div style={{borderTop:"1px solid "+C.border,padding:"14px 28px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
-        <span style={{color:"#222"}}>Commercial in Confidence · MADEPARTNERS</span>
+        <span style={{color:"#666"}}>Commercial in Confidence · MADEPARTNERS</span>
         <span style={{color:C.yellow,letterSpacing:"1px"}}>WWW.MADEPARTNERS.COM</span>
       </div>
     </div>
