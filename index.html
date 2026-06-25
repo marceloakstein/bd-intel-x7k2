@@ -26,7 +26,7 @@ const PIN_KEY      = "mp-pins-v1";
 const OVERRIDE_KEY = "mp-overrides-v1";
 const C = {
   yellow:"#FDB422", black:"#000000", white:"#FFFFFF",
-  card:"#0d0d0d", border:"#1e1e1e", muted:"#444444",
+  card:"#0d0d0d", border:"#1e1e1e", muted:"#888888",
   newColor:"#4ADE80", updatedColor:"#38BDF8",
   pinActive:"#FF5CA8", // bright pink — clearly distinct from faded grey unpinned pin
 };
@@ -437,7 +437,7 @@ function App(){
             <span style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:900,fontSize:"28px",color:C.yellow,letterSpacing:"5px"}}>MADE</span>
             <span style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:900,fontSize:"28px",color:C.white,letterSpacing:"4px"}}>PARTNERS</span>
           </div>
-          <div style={{color:"#777",fontFamily:"Arial,sans-serif",fontSize:"10px",letterSpacing:"3.5px",textTransform:"uppercase",marginTop:"4px"}}>RENEWABLE ENERGY MARKET INTELLIGENCE · AUSTRALIA & BRAZIL</div>
+          <div style={{color:"#aaa",fontFamily:"Arial,sans-serif",fontSize:"10px",letterSpacing:"3.5px",textTransform:"uppercase",marginTop:"4px"}}>RENEWABLE ENERGY MARKET INTELLIGENCE · AUSTRALIA & BRAZIL</div>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"1px"}}>Auto-updated weekly · Sundays</div>
@@ -463,7 +463,7 @@ function App(){
         <div style={{background:"#060606",padding:"0 28px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"stretch",flexWrap:"wrap"}}>
           <div style={{display:"flex"}}>
             {[{key:"table",label:"PROJECT TABLE"},{key:"timeline",label:"ENGAGEMENT TIMELINE"},{key:"detail",label:"SELECTED PROJECT"}].map(t=>(
-              <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#333":"#888",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
+              <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#555":"#bbb",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
                 {t.label}{t.key==="detail"&&selected&&<span style={{background:C.yellow,color:C.black,fontSize:"8px",padding:"1px 5px",borderRadius:"2px"}}>1</span>}
               </button>
             ))}
