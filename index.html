@@ -24,6 +24,7 @@ const PREV_URL     = "projects-prev.json";
 const LASTSCAN_URL = "last-scan.json";
 const PIN_KEY      = "mp-pins-v1";
 const OVERRIDE_KEY = "mp-overrides-v1";
+const BD_KEY       = "mp-bd-v1";
 const C = {
   yellow:"#FDB422", black:"#000000", white:"#FFFFFF",
   card:"#0d0d0d", border:"#1e1e1e", muted:"#888888",
@@ -307,6 +308,72 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
     </div>
   );
 }
+function BDRow({project:p,saved,onSaveRow}){
+  const [drafts,setDrafts]=React.useState({
+    developerContacts:saved.developerContacts||"",
+    tendererContacts:saved.tendererContacts||"",
+    epcContacts:saved.epcContacts||"",
+    bdStatus:saved.bdStatus||"",
+    nextSteps:saved.nextSteps||""
+  });
+  const [flash,setFlash]=React.useState(false);
+  function handleSave(){onSaveRow(p.projectName,drafts);setFlash(true);setTimeout(()=>setFlash(false),1500);}
+  const ta=(field,ph)=>(
+    <textarea value={drafts[field]} onChange={e=>setDrafts(d=>({...d,[field]:e.target.value}))} placeholder={ph} rows={3}
+      style={{width:"100%",background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"5px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.5}}/>
+  );
+  return (
+    <tr style={{borderBottom:"1px solid #1a1a1a",verticalAlign:"top",background:drafts.bdStatus||drafts.nextSteps?"#080808":"transparent"}}>
+      <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#fff",fontWeight:"bold",whiteSpace:"normal",overflowWrap:"break-word"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}><Flag country={p.country}/><span>{p.projectName}</span>{isDataCentre(p)&&<DCBadge/>}</div>
+        <div style={{marginTop:"4px"}}><Badge text={p.procurementStatus} type="status"/></div>
+      </td>
+      <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,fontWeight:"bold",whiteSpace:"nowrap"}}>{p.procurementStart||"TBD"}</td>
+      <td style={{padding:"5px 6px"}}>{ta("developerContacts","Developer / owner contacts…")}</td>
+      <td style={{padding:"5px 6px"}}>{ta("tendererContacts","Tenderer contacts…")}</td>
+      <td style={{padding:"5px 6px"}}>{ta("epcContacts","EPC contacts…")}</td>
+      <td style={{padding:"5px 6px"}}>{ta("bdStatus","e.g. Engaged, Not contacted, Meeting booked…")}</td>
+      <td style={{padding:"5px 6px"}}>{ta("nextSteps","e.g. Follow up Q3, Send capability statement…")}</td>
+      <td style={{padding:"8px 7px",textAlign:"center",verticalAlign:"middle"}}>
+        <button onClick={handleSave} style={{background:flash?"#1a3a1a":C.yellow,color:flash?"#4ADE80":C.black,border:"none",padding:"7px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",whiteSpace:"nowrap",width:"58px"}}>
+          {flash?"✓ OK":"SAVE"}
+        </button>
+      </td>
+    </tr>
+  );
+}
+function BDView({projects,bdData,onSaveRow}){
+  const sorted=[...projects].sort((a,b)=>{
+    const da=parseProcurementDate(a.procurementStart),db=parseProcurementDate(b.procurementStart);
+    return (da?da.getTime():Infinity)-(db?db.getTime():Infinity);
+  });
+  const TH=({children,w})=><th style={{padding:"10px 10px",textAlign:"left",background:C.yellow,color:C.black,fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap",fontFamily:"Arial,sans-serif",width:w||"auto"}}>{children}</th>;
+  const filled=projects.filter(p=>bdData[(p.projectName||"").toLowerCase()]?.bdStatus||bdData[(p.projectName||"").toLowerCase()]?.nextSteps).length;
+  return (
+    <div>
+      <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"14px",display:"flex",gap:"20px",flexWrap:"wrap"}}>
+        <span>BD planning for all {projects.length} projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · data saved locally in your browser</span>
+      </div>
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1180px",tableLayout:"fixed"}}>
+          <thead><tr>
+            <TH w="175px">Project Name</TH>
+            <TH w="75px">Equip. Proc.</TH>
+            <TH w="155px">Developer Contacts</TH>
+            <TH w="155px">Tenderer Contacts</TH>
+            <TH w="155px">EPC Contacts</TH>
+            <TH w="155px">BD Status</TH>
+            <TH w="175px">Next Steps</TH>
+            <TH w="70px"></TH>
+          </tr></thead>
+          <tbody>
+            {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdData[(p.projectName||"").toLowerCase()]||{}} onSaveRow={onSaveRow}/>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 function App(){
   const [projects,setProjects]=useState([]);
   const [lastScan,setLastScan]=useState(null);
@@ -328,9 +395,11 @@ function App(){
   const [procStartOpen,setProcStartOpen]=useState(false);
   const [sortKey,setSortKey]=useState("priority");
   const [sortDir,setSortDir]=useState("asc");
+  const [bdData,setBdData]=useState({});
   useEffect(()=>{
     try{const raw=localStorage.getItem(PIN_KEY);if(raw)setPins(JSON.parse(raw));}catch(e){}
     try{const raw=localStorage.getItem(OVERRIDE_KEY);if(raw)setOverrides(JSON.parse(raw));}catch(e){}
+    try{const raw=localStorage.getItem(BD_KEY);if(raw)setBdData(JSON.parse(raw));}catch(e){}
     (async()=>{
       let cur=[],prev=[];
       try{
@@ -350,6 +419,7 @@ function App(){
   function setStatusOverride(projectName,status){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={...(no[k]||{}),status,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
   function setProcStartOverride(projectName,procStart){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={...(no[k]||{}),procurementStart:procStart,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
   function setEpcOverride(projectName,epc){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={...(no[k]||{}),epcContractor:epc,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
+  function saveBDRow(projectName,fields){const k=(projectName||"").toLowerCase();const no={...bdData};no[k]={...(no[k]||{}),...fields};setBdData(no);try{localStorage.setItem(BD_KEY,JSON.stringify(no));}catch(e){}}
   function clearStatusOverride(projectName){const k=(projectName||"").toLowerCase();const no={...overrides};delete no[k];saveOverrides(no);}
   const isPinned=(p)=>!!pins[(p.projectName||"").toLowerCase()];
   const order={High:0,Medium:1,Low:2};
@@ -462,8 +532,8 @@ function App(){
       {!loading&&(
         <div style={{background:"#060606",padding:"0 28px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"stretch",flexWrap:"wrap"}}>
           <div style={{display:"flex"}}>
-            {[{key:"table",label:"PROJECT TABLE"},{key:"timeline",label:"ENGAGEMENT TIMELINE"},{key:"detail",label:"SELECTED PROJECT"}].map(t=>(
-              <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#555":"#bbb",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
+            {[{key:"table",label:"PROJECT TABLE"},{key:"timeline",label:"ENGAGEMENT TIMELINE"},{key:"bd",label:"BD STRATEGY"},{key:"detail",label:"SELECTED PROJECT"}].map(t=>(
+              <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#444":"#bbb",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
                 {t.label}{t.key==="detail"&&selected&&<span style={{background:C.yellow,color:C.black,fontSize:"8px",padding:"1px 5px",borderRadius:"2px"}}>1</span>}
               </button>
             ))}
@@ -573,6 +643,8 @@ function App(){
             </div>
           ):tab==="timeline"?(
             <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
+          ):tab==="bd"?(
+            <BDView projects={withPins} bdData={bdData} onSaveRow={saveBDRow}/>
           ):(
             selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride} onSetEpc={setEpcOverride}/>:(
               <div style={{textAlign:"center",padding:"100px 20px"}}>
