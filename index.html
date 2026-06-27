@@ -309,7 +309,7 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
   );
 }
 const BD_TYPE_COLORS={"Developer":"#4ADE80","Tenderer":"#38BDF8","EPC":C.yellow};
-function BDRow({project:p,saved,onSaveRow}){
+function BDRow({project:p,saved,onSaveRow,onSelect}){
   const [contacts,setContacts]=React.useState(saved.contacts||[]);
   const [nType,setNType]=React.useState("Developer");
   const [nCompany,setNCompany]=React.useState("");
@@ -329,7 +329,7 @@ function BDRow({project:p,saved,onSaveRow}){
   return (
     <tr style={{borderBottom:"2px solid #1e1e1e",verticalAlign:"top"}}>
       <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#fff",fontWeight:"bold",whiteSpace:"normal",overflowWrap:"break-word"}}>
-        <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}><Flag country={p.country}/><span>{p.projectName}</span>{isDataCentre(p)&&<DCBadge/>}</div>
+        <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}><Flag country={p.country}/><span onClick={()=>onSelect&&onSelect(p)} style={{cursor:"pointer",color:C.yellow,textDecoration:"underline",textDecorationStyle:"dotted",textUnderlineOffset:"3px"}}>{p.projectName}</span>{isDataCentre(p)&&<DCBadge/>}</div>
         <div style={{marginTop:"5px"}}><Badge text={p.procurementStatus} type="status"/></div>
       </td>
       <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,fontWeight:"bold",whiteSpace:"nowrap"}}>{p.procurementStart||"TBD"}</td>
@@ -360,7 +360,7 @@ function BDRow({project:p,saved,onSaveRow}){
     </tr>
   );
 }
-function BDView({projects,bdData,onSaveRow}){
+function BDView({projects,bdData,onSaveRow,onSelect}){
   const sorted=[...projects].sort((a,b)=>{
     const da=parseProcurementDate(a.procurementStart),db=parseProcurementDate(b.procurementStart);
     return (da?da.getTime():Infinity)-(db?db.getTime():Infinity);
@@ -384,7 +384,7 @@ function BDView({projects,bdData,onSaveRow}){
             <TH w="70px"></TH>
           </tr></thead>
           <tbody>
-            {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdData[(p.projectName||"").toLowerCase()]||{}} onSaveRow={onSaveRow}/>)}
+            {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdData[(p.projectName||"").toLowerCase()]||{}} onSaveRow={onSaveRow} onSelect={onSelect}/>)}
           </tbody>
         </table>
       </div>}
@@ -661,7 +661,7 @@ function App(){
           ):tab==="timeline"?(
             <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
           ):tab==="bd"?(
-            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} onSaveRow={saveBDRow}/>
+            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} onSaveRow={saveBDRow} onSelect={openProject}/>
           ):(
             selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride} onSetEpc={setEpcOverride}/>:(
               <div style={{textAlign:"center",padding:"100px 20px"}}>
