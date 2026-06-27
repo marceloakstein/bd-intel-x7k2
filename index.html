@@ -374,11 +374,11 @@ function BDView({projects,bdData,onSaveRow,onSelect}){
       {projects.length>0&&<div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:"980px",tableLayout:"fixed"}}>
           <thead><tr>
-            <TH w="175px">Project Name</TH>
-            <TH w="75px">Equip. Proc.</TH>
-            <TH w="360px">Contacts <span style={{fontWeight:"normal",textTransform:"none",letterSpacing:0,fontSize:"9px",opacity:0.7}}>— type · company · contact name</span></TH>
-            <TH w="175px">BD Status</TH>
-            <TH w="175px">Next Steps</TH>
+            <TH w="160px">Project Name</TH>
+            <TH w="70px">Equip. Proc.</TH>
+            <TH w="240px">Contacts <span style={{fontWeight:"normal",textTransform:"none",letterSpacing:0,fontSize:"9px",opacity:0.7}}>— type · company · contact name</span></TH>
+            <TH w="240px">BD Status</TH>
+            <TH w="240px">Next Steps</TH>
           </tr></thead>
           <tbody>
             {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdData[(p.projectName||"").toLowerCase()]||{}} onSaveRow={onSaveRow} onSelect={onSelect}/>)}
