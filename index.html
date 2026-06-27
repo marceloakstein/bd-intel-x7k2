@@ -506,7 +506,7 @@ function App(){
   );
   const auCount=withPins.filter(p=>p.country==="Australia").length;
   const brCount=withPins.filter(p=>p.country==="Brazil").length;
-  const highCount=withPins.filter(p=>p.priority==="High").length;
+  const activeCount=withPins.filter(p=>!isStale(p)).length;
   const dcCount=withPins.filter(isDataCentre).length;
   const newCount=withPins.filter(p=>p._changeStatus==="new").length;
   const updCount=withPins.filter(p=>p._changeStatus==="updated").length;
@@ -537,7 +537,7 @@ function App(){
           <StatCard value={brCount+" 🇧🇷"} label="Brazil"/>
           <StatCard value={"📌 "+pinCount} label="Pinned" accent/>
           {dcCount>0&&<StatCard value={"🖥 "+dcCount} label="Data Centres" color="#7cc4ff"/>}
-          <StatCard value={highCount} label="High Priority"/>
+          <StatCard value={activeCount} label="Active Projects"/>
           {(newCount>0||updCount>0)&&<><StatCard value={"🆕 "+newCount} label="New This Scan" color={C.newColor}/><StatCard value={"↻ "+updCount} label="Updated This Scan" color={C.updatedColor}/></>}
           {lowConfCount>0&&<StatCard value={"⚠ "+lowConfCount} label="Low Confidence" color="#ff5555"/>}
           {overrideCount>0&&<StatCard value={"✎ "+overrideCount} label="User Overrides" color="#cc77ff"/>}
