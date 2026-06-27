@@ -225,7 +225,7 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
               <div style={{color:"#bbb",fontFamily:"Arial,sans-serif",fontSize:"12px",lineHeight:"1.7"}}>{val}</div>
             </div>
           ))}
-          {p.sourceUrl&&<div style={{marginTop:"8px"}}><a href={p.sourceUrl} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>→ View source article</a></div>}
+          {p.sourceUrl&&<div style={{marginTop:"8px"}}><a href={p.sourceUrl.startsWith("http")?p.sourceUrl:"https://"+p.sourceUrl} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>→ View source article</a></div>}
         </div>
       </div>
     </div>
