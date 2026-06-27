@@ -316,16 +316,19 @@ function BDRow({project:p,saved,onSaveRow,onSelect}){
   const [nContact,setNContact]=React.useState("");
   const [bdStatus,setBdStatus]=React.useState(saved.bdStatus||"");
   const [nextSteps,setNextSteps]=React.useState(saved.nextSteps||"");
-  const [flash,setFlash]=React.useState(false);
   function addContact(){
     if(!nCompany.trim()&&!nContact.trim())return;
-    setContacts(c=>[...c,{type:nType,company:nCompany.trim(),name:nContact.trim()}]);
-    setNCompany("");setNContact("");
+    const updated=[...contacts,{type:nType,company:nCompany.trim(),name:nContact.trim()}];
+    setContacts(updated);setNCompany("");setNContact("");
+    onSaveRow(p.projectName,{contacts:updated,bdStatus,nextSteps});
   }
-  function removeContact(i){setContacts(c=>c.filter((_,idx)=>idx!==i));}
-  function handleSave(){onSaveRow(p.projectName,{contacts,bdStatus,nextSteps});setFlash(true);setTimeout(()=>setFlash(false),1500);}
+  function removeContact(i){
+    const updated=contacts.filter((_,idx)=>idx!==i);
+    setContacts(updated);
+    onSaveRow(p.projectName,{contacts:updated,bdStatus,nextSteps});
+  }
   const inp=(val,set,ph,w)=><input value={val} onChange={e=>set(e.target.value)} placeholder={ph} style={{background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"4px 6px",fontFamily:"Arial,sans-serif",fontSize:"10px",outline:"none",width:w||"100%",boxSizing:"border-box"}}/>;
-  const ta=(val,set,ph)=><textarea value={val} onChange={e=>set(e.target.value)} placeholder={ph} rows={4} style={{width:"100%",background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"5px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.5}}/>;
+  const ta=(val,set,field,ph)=><textarea value={val} onChange={e=>{set(e.target.value);onSaveRow(p.projectName,{contacts,...(field==="bdStatus"?{bdStatus:e.target.value,nextSteps}:{bdStatus,nextSteps:e.target.value})});}} placeholder={ph} rows={4} style={{width:"100%",background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"5px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.5}}/>;
   return (
     <tr style={{borderBottom:"2px solid #1e1e1e",verticalAlign:"top"}}>
       <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#fff",fontWeight:"bold",whiteSpace:"normal",overflowWrap:"break-word"}}>
@@ -350,13 +353,8 @@ function BDRow({project:p,saved,onSaveRow,onSelect}){
           <button onClick={addContact} style={{background:"#1a1a1a",color:C.yellow,border:"1px solid "+C.yellow,padding:"4px 10px",fontFamily:"Arial,sans-serif",fontSize:"12px",cursor:"pointer",fontWeight:"bold",flexShrink:0}}>+</button>
         </div>
       </td>
-      <td style={{padding:"5px 6px"}}>{ta(bdStatus,setBdStatus,"e.g. Engaged, Not contacted, Meeting booked…")}</td>
-      <td style={{padding:"5px 6px"}}>{ta(nextSteps,setNextSteps,"e.g. Follow up Q3, Send capability statement…")}</td>
-      <td style={{padding:"8px 7px",textAlign:"center",verticalAlign:"middle"}}>
-        <button onClick={handleSave} style={{background:flash?"#1a3a1a":C.yellow,color:flash?"#4ADE80":C.black,border:"none",padding:"7px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",whiteSpace:"nowrap",width:"58px"}}>
-          {flash?"✓ OK":"SAVE"}
-        </button>
-      </td>
+      <td style={{padding:"5px 6px"}}>{ta(bdStatus,setBdStatus,"bdStatus","e.g. Engaged, Not contacted, Meeting booked…")}</td>
+      <td style={{padding:"5px 6px"}}>{ta(nextSteps,setNextSteps,"nextSteps","e.g. Follow up Q3, Send capability statement…")}</td>
     </tr>
   );
 }
@@ -370,18 +368,17 @@ function BDView({projects,bdData,onSaveRow,onSelect}){
   return (
     <div>
       <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"14px"}}>
-        BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{projects.length}</span> pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · saved locally in your browser · pin projects in the Project Table to add them here
+        BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{projects.length}</span> pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · <span style={{color:"#4ADE80"}}>✓ auto-saved</span> locally in your browser · pin projects in the Project Table to add them here
       </div>
       {projects.length===0&&<div style={{padding:"60px 20px",textAlign:"center",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>No pinned projects yet — click 📌 on any row in the <span style={{color:C.yellow,fontWeight:"bold"}}>PROJECT TABLE</span> to add it here.</div>}
       {projects.length>0&&<div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1050px",tableLayout:"fixed"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:"980px",tableLayout:"fixed"}}>
           <thead><tr>
             <TH w="175px">Project Name</TH>
             <TH w="75px">Equip. Proc.</TH>
             <TH w="360px">Contacts <span style={{fontWeight:"normal",textTransform:"none",letterSpacing:0,fontSize:"9px",opacity:0.7}}>— type · company · contact name</span></TH>
             <TH w="175px">BD Status</TH>
             <TH w="175px">Next Steps</TH>
-            <TH w="70px"></TH>
           </tr></thead>
           <tbody>
             {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdData[(p.projectName||"").toLowerCase()]||{}} onSaveRow={onSaveRow} onSelect={onSelect}/>)}
