@@ -407,7 +407,6 @@ function App(){
   const [selected,setSelected]=useState(null);
   const [fSearch,setFSearch]=useState("");
   const [fCountry,setFCountry]=useState("All");
-  const [fPriority,setFPriority]=useState("All");
   const [fStatus,setFStatus]=useState([]);
   const [fChange,setFChange]=useState("All");
   const [fHideStale,setFHideStale]=useState(true);
@@ -452,7 +451,6 @@ function App(){
   const displayed=withPins
     .filter(p=>{if(!fSearch.trim())return true;const q=fSearch.trim().toLowerCase();const hay=[p.projectName,p.location,p.summary,...(p.companies||[]),...(p.assetTypes||[]),...[p.owner].flat(),...[p.epcContractor].flat()].flat().join(" ").toLowerCase();return hay.includes(q);})
     .filter(p=>fCountry==="All"||p.country===fCountry)
-    .filter(p=>fPriority==="All"||p.priority===fPriority)
     .filter(p=>fStatus.length===0||fStatus.includes(p.procurementStatus))
     .filter(p=>fChange==="All"||p._changeStatus===(fChange==="New"?"new":"updated"))
     .filter(p=>!fDC||isDataCentre(p))
@@ -490,8 +488,8 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFSearch("");setFCountry("All");setFPriority("All");setFStatus([]);setFChange("All");setFDC(false);setFProcStart([]);setFHideStale(true);}
-  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fPriority!=="All"||fStatus.length>0||fChange!=="All"||fDC||fProcStart.length>0;
+  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFDC(false);setFProcStart([]);setFHideStale(true);}
+  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fDC||fProcStart.length>0;
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
   const fmt=iso=>{
@@ -564,7 +562,6 @@ function App(){
             <input value={fSearch} onChange={e=>setFSearch(e.target.value)} placeholder="🔍 Search projects…" style={{background:"#0d0d0d",color:C.white,border:"1px solid "+(fSearch.trim()?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"11px",outline:"none",width:"180px",letterSpacing:"0.3px"}}/>
             {[
               {val:fCountry,set:setFCountry,opts:["All","Australia","Brazil"],ph:"ALL COUNTRIES"},
-              {val:fPriority,set:setFPriority,opts:["All","High","Medium","Low"],ph:"ALL PRIORITIES"},
               {val:fChange,set:setFChange,opts:["All","New","Updated"],ph:"ALL CHANGES"},
             ].map((f,i)=>(
               <select key={i} value={f.val} onChange={e=>f.set(e.target.value)} style={{background:"#0d0d0d",color:"#bbb",border:"1px solid "+C.border,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
