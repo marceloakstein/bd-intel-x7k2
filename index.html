@@ -308,32 +308,50 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
     </div>
   );
 }
+const BD_TYPE_COLORS={"Developer":"#4ADE80","Tenderer":"#38BDF8","EPC":C.yellow};
 function BDRow({project:p,saved,onSaveRow}){
-  const [drafts,setDrafts]=React.useState({
-    developerContacts:saved.developerContacts||"",
-    tendererContacts:saved.tendererContacts||"",
-    epcContacts:saved.epcContacts||"",
-    bdStatus:saved.bdStatus||"",
-    nextSteps:saved.nextSteps||""
-  });
+  const [contacts,setContacts]=React.useState(saved.contacts||[]);
+  const [nType,setNType]=React.useState("Developer");
+  const [nCompany,setNCompany]=React.useState("");
+  const [nContact,setNContact]=React.useState("");
+  const [bdStatus,setBdStatus]=React.useState(saved.bdStatus||"");
+  const [nextSteps,setNextSteps]=React.useState(saved.nextSteps||"");
   const [flash,setFlash]=React.useState(false);
-  function handleSave(){onSaveRow(p.projectName,drafts);setFlash(true);setTimeout(()=>setFlash(false),1500);}
-  const ta=(field,ph)=>(
-    <textarea value={drafts[field]} onChange={e=>setDrafts(d=>({...d,[field]:e.target.value}))} placeholder={ph} rows={3}
-      style={{width:"100%",background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"5px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.5}}/>
-  );
+  function addContact(){
+    if(!nCompany.trim()&&!nContact.trim())return;
+    setContacts(c=>[...c,{type:nType,company:nCompany.trim(),name:nContact.trim()}]);
+    setNCompany("");setNContact("");
+  }
+  function removeContact(i){setContacts(c=>c.filter((_,idx)=>idx!==i));}
+  function handleSave(){onSaveRow(p.projectName,{contacts,bdStatus,nextSteps});setFlash(true);setTimeout(()=>setFlash(false),1500);}
+  const inp=(val,set,ph,w)=><input value={val} onChange={e=>set(e.target.value)} placeholder={ph} style={{background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"4px 6px",fontFamily:"Arial,sans-serif",fontSize:"10px",outline:"none",width:w||"100%",boxSizing:"border-box"}}/>;
+  const ta=(val,set,ph)=><textarea value={val} onChange={e=>set(e.target.value)} placeholder={ph} rows={4} style={{width:"100%",background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"5px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.5}}/>;
   return (
-    <tr style={{borderBottom:"1px solid #1a1a1a",verticalAlign:"top",background:drafts.bdStatus||drafts.nextSteps?"#080808":"transparent"}}>
+    <tr style={{borderBottom:"2px solid #1e1e1e",verticalAlign:"top"}}>
       <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#fff",fontWeight:"bold",whiteSpace:"normal",overflowWrap:"break-word"}}>
         <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}><Flag country={p.country}/><span>{p.projectName}</span>{isDataCentre(p)&&<DCBadge/>}</div>
-        <div style={{marginTop:"4px"}}><Badge text={p.procurementStatus} type="status"/></div>
+        <div style={{marginTop:"5px"}}><Badge text={p.procurementStatus} type="status"/></div>
       </td>
       <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,fontWeight:"bold",whiteSpace:"nowrap"}}>{p.procurementStart||"TBD"}</td>
-      <td style={{padding:"5px 6px"}}>{ta("developerContacts","Developer / owner contacts…")}</td>
-      <td style={{padding:"5px 6px"}}>{ta("tendererContacts","Tenderer contacts…")}</td>
-      <td style={{padding:"5px 6px"}}>{ta("epcContacts","EPC contacts…")}</td>
-      <td style={{padding:"5px 6px"}}>{ta("bdStatus","e.g. Engaged, Not contacted, Meeting booked…")}</td>
-      <td style={{padding:"5px 6px"}}>{ta("nextSteps","e.g. Follow up Q3, Send capability statement…")}</td>
+      <td style={{padding:"6px 7px"}}>
+        {contacts.map((c,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"4px",background:"#0d0d0d",padding:"5px 8px",borderLeft:"2px solid "+(BD_TYPE_COLORS[c.type]||"#555")}}>
+            <span style={{color:BD_TYPE_COLORS[c.type]||"#aaa",fontSize:"8px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px"}}>{c.type}</span>
+            <span style={{color:"#ddd",fontSize:"11px",fontFamily:"Arial,sans-serif",flex:1,lineHeight:1.4}}>{c.company}{c.name?<span style={{color:"#888"}}> · {c.name}</span>:""}</span>
+            <button onClick={()=>removeContact(i)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:"14px",padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>
+          </div>
+        ))}
+        <div style={{display:"flex",gap:"4px",alignItems:"center",marginTop:"6px",flexWrap:"wrap"}}>
+          <select value={nType} onChange={e=>setNType(e.target.value)} style={{background:"#0a0a0a",color:BD_TYPE_COLORS[nType]||"#bbb",border:"1px solid #2a2a2a",padding:"4px 5px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:"bold",width:"82px",cursor:"pointer"}}>
+            <option>Developer</option><option>Tenderer</option><option>EPC</option>
+          </select>
+          {inp(nCompany,setNCompany,"Company name","calc(50% - 50px)")}
+          <input value={nContact} onChange={e=>setNContact(e.target.value)} placeholder="Contact name" onKeyDown={e=>e.key==="Enter"&&addContact()} style={{background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"4px 6px",fontFamily:"Arial,sans-serif",fontSize:"10px",outline:"none",flex:1,boxSizing:"border-box"}}/>
+          <button onClick={addContact} style={{background:"#1a1a1a",color:C.yellow,border:"1px solid "+C.yellow,padding:"4px 10px",fontFamily:"Arial,sans-serif",fontSize:"12px",cursor:"pointer",fontWeight:"bold",flexShrink:0}}>+</button>
+        </div>
+      </td>
+      <td style={{padding:"5px 6px"}}>{ta(bdStatus,setBdStatus,"e.g. Engaged, Not contacted, Meeting booked…")}</td>
+      <td style={{padding:"5px 6px"}}>{ta(nextSteps,setNextSteps,"e.g. Follow up Q3, Send capability statement…")}</td>
       <td style={{padding:"8px 7px",textAlign:"center",verticalAlign:"middle"}}>
         <button onClick={handleSave} style={{background:flash?"#1a3a1a":C.yellow,color:flash?"#4ADE80":C.black,border:"none",padding:"7px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",whiteSpace:"nowrap",width:"58px"}}>
           {flash?"✓ OK":"SAVE"}
@@ -348,22 +366,20 @@ function BDView({projects,bdData,onSaveRow}){
     return (da?da.getTime():Infinity)-(db?db.getTime():Infinity);
   });
   const TH=({children,w})=><th style={{padding:"10px 10px",textAlign:"left",background:C.yellow,color:C.black,fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap",fontFamily:"Arial,sans-serif",width:w||"auto"}}>{children}</th>;
-  const filled=projects.filter(p=>bdData[(p.projectName||"").toLowerCase()]?.bdStatus||bdData[(p.projectName||"").toLowerCase()]?.nextSteps).length;
+  const filled=projects.filter(p=>{const d=bdData[(p.projectName||"").toLowerCase()];return d&&((d.contacts&&d.contacts.length>0)||d.bdStatus||d.nextSteps);}).length;
   return (
     <div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"14px",display:"flex",gap:"20px",flexWrap:"wrap"}}>
-        <span>BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{projects.length}</span> pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · data saved locally in your browser · pin projects in the Project Table to add them here</span>
+      <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"14px"}}>
+        BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{projects.length}</span> pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · saved locally in your browser · pin projects in the Project Table to add them here
       </div>
       {projects.length===0&&<div style={{padding:"60px 20px",textAlign:"center",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>No pinned projects yet — click 📌 on any row in the <span style={{color:C.yellow,fontWeight:"bold"}}>PROJECT TABLE</span> to add it here.</div>}
       {projects.length>0&&<div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1180px",tableLayout:"fixed"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1050px",tableLayout:"fixed"}}>
           <thead><tr>
             <TH w="175px">Project Name</TH>
             <TH w="75px">Equip. Proc.</TH>
-            <TH w="155px">Developer Contacts</TH>
-            <TH w="155px">Tenderer Contacts</TH>
-            <TH w="155px">EPC Contacts</TH>
-            <TH w="155px">BD Status</TH>
+            <TH w="360px">Contacts <span style={{fontWeight:"normal",textTransform:"none",letterSpacing:0,fontSize:"9px",opacity:0.7}}>— type · company · contact name</span></TH>
+            <TH w="175px">BD Status</TH>
             <TH w="175px">Next Steps</TH>
             <TH w="70px"></TH>
           </tr></thead>
