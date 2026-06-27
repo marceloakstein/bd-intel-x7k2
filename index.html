@@ -229,9 +229,8 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
   const url=p.sourceUrl.startsWith("http")?p.sourceUrl:"https://"+p.sourceUrl;
   const isDomainOnly=!url.replace(/^https?:\/\//,"").includes("/");
   const searchUrl=isDomainOnly?"https://www.google.com/search?q="+encodeURIComponent('"'+p.projectName+'" site:'+url.replace(/^https?:\/\//,"").replace(/\/$/,"")):url;
-  return <div style={{marginTop:"8px",display:"flex",gap:"12px",flexWrap:"wrap"}}>
+  return <div style={{marginTop:"8px"}}>
     <a href={searchUrl} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>{isDomainOnly?"→ Search on source site":"→ View source article"}</a>
-    {isDomainOnly&&<a href={url} target="_blank" rel="noreferrer" style={{color:"#555",fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>↗ {url.replace(/^https?:\/\//,"")}</a>}
   </div>;
 })()}
         </div>
