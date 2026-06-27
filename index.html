@@ -352,9 +352,10 @@ function BDView({projects,bdData,onSaveRow}){
   return (
     <div>
       <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"14px",display:"flex",gap:"20px",flexWrap:"wrap"}}>
-        <span>BD planning for all {projects.length} projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · data saved locally in your browser</span>
+        <span>BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{projects.length}</span> pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · data saved locally in your browser · pin projects in the Project Table to add them here</span>
       </div>
-      <div style={{overflowX:"auto"}}>
+      {projects.length===0&&<div style={{padding:"60px 20px",textAlign:"center",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>No pinned projects yet — click 📌 on any row in the <span style={{color:C.yellow,fontWeight:"bold"}}>PROJECT TABLE</span> to add it here.</div>}
+      {projects.length>0&&<div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:"1180px",tableLayout:"fixed"}}>
           <thead><tr>
             <TH w="175px">Project Name</TH>
@@ -370,7 +371,7 @@ function BDView({projects,bdData,onSaveRow}){
             {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdData[(p.projectName||"").toLowerCase()]||{}} onSaveRow={onSaveRow}/>)}
           </tbody>
         </table>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -644,7 +645,7 @@ function App(){
           ):tab==="timeline"?(
             <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
           ):tab==="bd"?(
-            <BDView projects={withPins} bdData={bdData} onSaveRow={saveBDRow}/>
+            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} onSaveRow={saveBDRow}/>
           ):(
             selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride} onSetEpc={setEpcOverride}/>:(
               <div style={{textAlign:"center",padding:"100px 20px"}}>
