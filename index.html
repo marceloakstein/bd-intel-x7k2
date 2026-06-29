@@ -50,8 +50,9 @@ function parseProcurementDate(s){
   return null;
 }
 function isStale(p){
-  // Only hide Under Construction projects where equipment procurement started >6 months ago.
+  // Hide Cancelled projects and Under Construction projects where procurement started >6 months ago.
   // Planning and Pre-tender are NEVER hidden — they always represent future BD opportunity.
+  if((p.procurementStatus||"")==="Cancelled")return true;
   if((p.procurementStatus||"")!=="Under Construction")return false;
   const d=parseProcurementDate(p.procurementStart);
   if(!d)return false;
@@ -88,6 +89,7 @@ function Badge({text,type}){
     status_Awarded:{bg:"#0c0c25",color:"#6699ff",border:"1px solid #6699ff"},
     status_UnderConstruction:{bg:"#200e00",color:"#ff9940",border:"1px solid #ff9940"},
     status_Planning:{bg:"#151515",color:"#666",border:"1px solid #2a2a2a"},
+    status_Cancelled:{bg:"#1a0000",color:"#cc3333",border:"1px solid #cc3333"},
   };
   const raw=(text||"");
   const norm=raw.replace(/[\s\-\/]/g,"");
@@ -99,6 +101,7 @@ function Badge({text,type}){
     else if(low.startsWith("awarded"))key="status_Awarded";
     else if(low.startsWith("under construction"))key="status_UnderConstruction";
     else if(low.startsWith("planning"))key="status_Planning";
+    else if(low.startsWith("cancelled")||low.startsWith("canceled"))key="status_Cancelled";
   }
   const s=map[key]||{bg:"#1a1a1a",color:"#666",border:"1px solid #2a2a2a"};
   const isStatus=type==="status";
@@ -175,7 +178,7 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
             <div style={{color:"#888",fontFamily:"Arial,sans-serif",fontSize:"10px",marginBottom:"4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Status</div>
             <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",marginBottom:"10px"}}>
               <select value={overrideDraft} onChange={e=>setOverrideDraft(e.target.value)} style={{background:"#0d0d0d",color:"#ccc",border:"1px solid #6633aa",padding:"5px 8px",fontFamily:"Arial,sans-serif",fontSize:"11px",cursor:"pointer"}}>
-                {["Pre-tender","Tender Active","Awarded","Under Construction","Planning"].map(s=><option key={s} value={s}>{s}</option>)}
+                {["Pre-tender","Tender Active","Awarded","Under Construction","Planning","Cancelled"].map(s=><option key={s} value={s}>{s}</option>)}
               </select>
               <button onClick={()=>onSetOverride&&onSetOverride(p.projectName,overrideDraft)} style={{background:"#6633aa",color:"#fff",border:"none",padding:"5px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",cursor:"pointer",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px"}}>SAVE</button>
             </div>
@@ -228,9 +231,14 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
           {p.sourceUrl&&(()=>{
   const url=p.sourceUrl.startsWith("http")?p.sourceUrl:"https://"+p.sourceUrl;
   const isDomainOnly=!url.replace(/^https?:\/\//,"").includes("/");
-  const searchUrl=isDomainOnly?"https://www.google.com/search?q="+encodeURIComponent('"'+p.projectName+'" site:'+url.replace(/^https?:\/\//,"").replace(/\/$/,""))+"&btnI=1":url;
-  return <div style={{marginTop:"8px"}}>
-    <a href={searchUrl} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>{isDomainOnly?"→ View source article":"→ View source article"}</a>
+  const domain=url.replace(/^https?:\/\//,"").replace(/\/$/,"");
+  const searchUrl="https://www.google.com/search?q="+encodeURIComponent('"'+p.projectName+'" site:'+domain)+"&num=3";
+  return <div style={{marginTop:"8px",display:"flex",flexDirection:"column",gap:"4px"}}>
+    {isDomainOnly
+      ?<><a href={searchUrl} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>→ Find article on {domain}</a>
+        <span style={{color:"#555",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>Opens Google — click the top result to open the article directly</span></>
+      :<a href={url} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>→ View source article</a>
+    }
   </div>;
 })()}
         </div>
@@ -573,7 +581,7 @@ function App(){
               </button>
               {statusOpen&&(
                 <div style={{position:"absolute",top:"32px",left:0,background:"#0d0d0d",border:"1px solid "+C.border,zIndex:50,minWidth:"180px",padding:"6px 0",boxShadow:"0 4px 12px rgba(0,0,0,0.5)"}}>
-                  {["Pre-tender","Tender Active","Awarded","Under Construction","Planning"].map(s=>(
+                  {["Pre-tender","Tender Active","Awarded","Under Construction","Planning","Cancelled"].map(s=>(
                     <label key={s} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 12px",cursor:"pointer",fontFamily:"Arial,sans-serif",fontSize:"11px",color:fStatus.includes(s)?C.yellow:"#888"}}>
                       <input type="checkbox" checked={fStatus.includes(s)} onChange={()=>setFStatus(cur=>cur.includes(s)?cur.filter(x=>x!==s):[...cur,s])} style={{accentColor:C.yellow}}/>
                       {s}
