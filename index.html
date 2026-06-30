@@ -637,7 +637,6 @@ function App(){
                     <ColHead label="Key Assets" k="assetTypes" style={{width:"120px"}}/>
                     <ColHead label="Owner / Developer" k="owner" style={{width:"130px"}}/>
                     <ColHead label="EPC / TENDERER" k="epcContractor" style={{width:"120px"}}/>
-                    <ColHead label="Engage By" k="mpEngagementWindow" style={{width:"130px"}}/>
                   </tr></thead>
                   <tbody>
                     {displayed.map((p,i)=>{
@@ -659,7 +658,6 @@ function App(){
                           <td onClick={open} style={TD({color:"#ccc",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{(p.assetTypes||[]).join(", ")}</td>
                           <td onClick={open} style={TD({color:"#ddd",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.owner)||(p.companies&&!p.epcContractor&&!p.financiers?coList(p.companies):"")||"—"}</td>
                           <td onClick={open} style={TD({color:"#ccc",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"})}>{coList(p.epcContractor)||coList(p.companies)||"—"}</td>
-                          <td onClick={open} style={TD(hl(p,"mpEngagementWindow",{color:"#eee",fontWeight:"bold",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3}))}>{p.mpEngagementWindow||"—"}</td>
                         </tr>
                       );
                     })}
