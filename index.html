@@ -247,9 +247,19 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
   );
 }
 function TimelineView({projects,onSelect,selected,onPinToggle}){
-  // Buckets by mpEngagementWindow END date — today ≈ H1 2026
-  // Using engagement window end (not procurementStart) gives 0 TBDs on current data.
-  const buckets=["🚨 Act Now (Window ≤H1 2026)","H2 2026","H1 2027","H2 2027","2028+","TBD"];
+  // Dynamic buckets based on current date
+  const _now=new Date();
+  const _cy=_now.getFullYear();
+  const _ch=_now.getMonth()<6?1:2;
+  const _hLabel=(y,h)=>`H${h} ${y}`;
+  const _nextH=(y,h)=>h===1?{y,h:2}:{y:y+1,h:1};
+  // Build bucket list: Act Now + 4 future halves + year+ + TBD
+  const _actNow=`🚨 Act Now (Window ≤H${_ch} ${_cy})`;
+  const _futureBuckets=[];
+  let _cur=_nextH(_cy,_ch);
+  for(let i=0;i<4;i++){_futureBuckets.push(_hLabel(_cur.y,_cur.h));_cur=_nextH(_cur.y,_cur.h);}
+  const _yearPlus=`${_cur.y}+`;
+  const buckets=[_actNow,..._futureBuckets,_yearPlus,"TBD"];
 
   function parseH(str){
     const m=(str||"").match(/H([12])\s*(\d{4})/i);
@@ -259,16 +269,12 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
   const assign=(p)=>{
     const ew=(p.mpEngagementWindow||"").trim();
     if(!ew||/^(tbd|unknown|review procurement timeline)$/i.test(ew))return"TBD";
-    // Extract ALL H-tokens; use the LAST one as the end of the window
     const tokens=(ew.match(/H[12]\s*\d{4}/gi)||[]);
     const end=tokens.length?parseH(tokens[tokens.length-1]):null;
     if(!end)return"TBD";
-    // Bucket by end date relative to today (H1 2026 = Jan–Jun 2026)
-    if(end.year<2026||(end.year===2026&&end.h<=1))return"🚨 Act Now (Window ≤H1 2026)";
-    if(end.year===2026)return"H2 2026";
-    if(end.year===2027&&end.h===1)return"H1 2027";
-    if(end.year===2027)return"H2 2027";
-    return"2028+";
+    if(end.year<_cy||(end.year===_cy&&end.h<=_ch))return _actNow;
+    for(const b of _futureBuckets){const p2=parseH(b);if(p2&&end.year===p2.year&&end.h===p2.h)return b;}
+    return _yearPlus;
   };
 
   const grouped={};buckets.forEach(b=>grouped[b]=[]);
@@ -284,7 +290,7 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
 
   return (
     <div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY WHEN THE OUTREACH WINDOW CLOSES · TODAY H1 2026</div>
+      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>{`MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY WHEN THE OUTREACH WINDOW CLOSES · TODAY H${_ch} ${_cy}`}</div>
       <div style={{position:"relative"}}>
         <div style={{position:"absolute",left:"130px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, #ff5555, "+C.yellow+", #222)"}}/>
         {active.map((bucket,bi)=>(
