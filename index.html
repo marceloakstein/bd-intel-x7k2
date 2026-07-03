@@ -267,13 +267,14 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
   }
 
   const assign=(p)=>{
-    const ew=(p.mpEngagementWindow||"").trim();
-    if(!ew||/^(tbd|unknown|review procurement timeline)$/i.test(ew))return"TBD";
-    const tokens=(ew.match(/H[12]\s*\d{4}/gi)||[]);
-    const end=tokens.length?parseH(tokens[tokens.length-1]):null;
-    if(!end)return"TBD";
-    if(end.year<_cy||(end.year===_cy&&end.h<=_ch))return _actNow;
-    for(const b of _futureBuckets){const p2=parseH(b);if(p2&&end.year===p2.year&&end.h===p2.h)return b;}
+    const ps=(p.procurementStart||"").trim();
+    if(!ps||ps==="TBD"||ps==="")return"TBD";
+    const d=parseProcurementDate(ps);
+    if(!d)return"TBD";
+    const ey=d.getFullYear();
+    const eh=d.getMonth()<6?1:2;
+    if(ey<_cy||(ey===_cy&&eh<=_ch))return _actNow;
+    for(const b of _futureBuckets){const p2=parseH(b);if(p2&&ey===p2.year&&eh===p2.h)return b;}
     return _yearPlus;
   };
 
@@ -290,7 +291,7 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
 
   return (
     <div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>{`MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY WHEN THE OUTREACH WINDOW CLOSES · TODAY H${_ch} ${_cy}`}</div>
+      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>{`MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY EQUIPMENT PROCUREMENT START DATE · TODAY H${_ch} ${_cy}`}</div>
       <div style={{position:"relative"}}>
         <div style={{position:"absolute",left:"130px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, #ff5555, "+C.yellow+", #222)"}}/>
         {active.map((bucket,bi)=>(
