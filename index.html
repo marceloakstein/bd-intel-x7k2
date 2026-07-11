@@ -7,7 +7,7 @@
 </head>
 <body style="margin:0;padding:0;background:#000;">
 <!--
-  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (latest)
+  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v2 2026-07-11)
   Read-only. Fetches projects.json + projects-prev.json from the SAME repo (same origin, no auth).
   Features: HV + Data Centre badges, multi-select status, reset filters, change highlighting,
   single left pin (per-viewer localStorage), Selected Project tab.
@@ -38,6 +38,24 @@ function hasHVEquipment(p){
 function isDataCentre(p){
   const hay=[...(p.assetTypes||[]),p.summary||"",p.projectName||"",...(p.companies||[])].join(" ").toLowerCase();
   return /data ?cent(er|re)|hyperscale|\bdc\b|colocation|colo\b|cloud campus/.test(hay);
+}
+function assetHay(p,re){return re.test([...(p.assetTypes||[]),p.projectName||"",p.summary||""].join(" ").toLowerCase());}
+const ASSET_FILTERS={
+  "Data Centre":p=>isDataCentre(p),
+  "HV Transmission":p=>assetHay(p,/transmission|interconnector|hvdc|transmission tower/),
+  "Substation":p=>assetHay(p,/substation|switchyard/),
+  "BESS":p=>assetHay(p,/\bbess\b|battery/),
+  "Solar PV":p=>assetHay(p,/solar/),
+  "Wind":p=>assetHay(p,/wind/),
+  "Hydrogen":p=>assetHay(p,/hydrogen/),
+  "REZ":p=>assetHay(p,/\brez\b|renewable energy zone/),
+};
+const ASSET_KEYS=Object.keys(ASSET_FILTERS);
+function matchesSearch(p,q){
+  if(!q||!q.trim())return true;
+  const s=q.trim().toLowerCase();
+  const hay=[p.projectName,p.location,p.summary,...(p.companies||[]),...(p.assetTypes||[]),...[p.owner].flat(),...[p.epcContractor].flat()].flat().join(" ").toLowerCase();
+  return hay.includes(s);
 }
 function parseProcurementDate(s){
   if(!s||s==="TBD"||s==="")return null;
@@ -121,7 +139,7 @@ function ChangeBadge({status}){
   return null;
 }
 const Flag=({country})=><span style={{fontSize:"14px",lineHeight:1}}>{country==="Australia"?"🇦🇺":country==="Brazil"?"🇧🇷":"🌐"}</span>;
-function StatCard({value,label,accent,color}){return <div><div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"30px",color:color||(accent?C.yellow:C.white),lineHeight:1}}>{value}</div><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",marginTop:"4px"}}>{label}</div></div>;}
+function StatCard({value,label,accent,color,onClick,active}){return <div onClick={onClick} title={onClick?"Click to filter":undefined} style={{cursor:onClick?"pointer":"default",outline:active?"1px solid "+(color||C.yellow):"none",outlineOffset:"6px"}}><div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"30px",color:color||(accent?C.yellow:C.white),lineHeight:1}}>{value}</div><div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",marginTop:"4px"}}>{label}</div></div>;}
 const SectionLabel=({children})=><div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,textTransform:"uppercase",letterSpacing:"1.5px",fontWeight:"bold",marginBottom:"6px",borderBottom:"1px solid "+C.border,paddingBottom:"5px"}}>{children}</div>;
 function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverride,onSetProcStart,onSetEpc}){
   if(!p)return null;
@@ -278,8 +296,17 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
     return _yearPlus;
   };
 
+  const [collapsed,setCollapsed]=React.useState({});
   const grouped={};buckets.forEach(b=>grouped[b]=[]);
   projects.forEach(p=>grouped[assign(p)].push(p));
+  // Within each window: pinned first, then priority, then capacity — so your BD focus floats up
+  const prioOrd={High:0,Medium:1,Low:2};
+  Object.keys(grouped).forEach(b=>grouped[b].sort((a,x)=>{
+    if(!!a._pinned!==!!x._pinned)return a._pinned?-1:1;
+    const pa=prioOrd[a.priority]??2,px=prioOrd[x.priority]??2;
+    if(pa!==px)return pa-px;
+    return (Number(x.capacityMW)||0)-(Number(a.capacityMW)||0);
+  }));
   const active=buckets.filter(b=>grouped[b].length>0);
   const bc=(p)=>p._pinned?C.pinActive:p._changeStatus==="new"?C.newColor:p._changeStatus==="updated"?C.updatedColor:p.priority==="High"?C.yellow:p.priority==="Medium"?"#444":"#222";
 
@@ -291,18 +318,21 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
 
   return (
     <div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>{`MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY EQUIPMENT PROCUREMENT START DATE · TODAY H${_ch} ${_cy}`}</div>
+      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"6px"}}>{`MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY EQUIPMENT PROCUREMENT START DATE · TODAY H${_ch} ${_cy}`}</div>
+      <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>
+        Showing <span style={{color:C.yellow,fontWeight:"bold"}}>{projects.length}</span> projects across <span style={{color:C.yellow,fontWeight:"bold"}}>{active.length}</span> windows · <span style={{color:"#ff5555",fontWeight:"bold"}}>{grouped[_actNow].length}</span> need action now · 📌 pinned float to the top of each window · click a window label to collapse it
+      </div>
       <div style={{position:"relative"}}>
         <div style={{position:"absolute",left:"130px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, #ff5555, "+C.yellow+", #222)"}}/>
         {active.map((bucket,bi)=>(
           <div key={bucket} style={{display:"flex",marginBottom:"20px"}}>
-            <div style={{width:"131px",minWidth:"131px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative"}}>
-              <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"11px",color:bucketColor(bucket,bi),textTransform:"uppercase",lineHeight:1.3}}>{bucket}</div>
+            <div onClick={()=>setCollapsed(c=>({...c,[bucket]:!c[bucket]}))} style={{width:"131px",minWidth:"131px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative",cursor:"pointer",userSelect:"none"}} title={collapsed[bucket]?"Expand":"Collapse"}>
+              <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"11px",color:bucketColor(bucket,bi),textTransform:"uppercase",lineHeight:1.3}}>{bucket} {collapsed[bucket]?"▸":""}</div>
               <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#333",marginTop:"3px"}}>{grouped[bucket].length} project{grouped[bucket].length!==1?"s":""}</div>
               <div style={{position:"absolute",right:"-7px",top:"15px",width:"12px",height:"12px",borderRadius:"50%",background:bucket.startsWith("🚨")?"#ff5555":bi===0?C.yellow:C.border,border:bi===0?"none":"2px solid "+C.muted,zIndex:1}}/>
             </div>
             <div style={{flex:1,paddingLeft:"24px",display:"flex",flexDirection:"column",gap:"8px"}}>
-              {grouped[bucket].map((p,pi)=>(
+              {(collapsed[bucket]?[]:grouped[bucket]).map((p,pi)=>(
                 <div key={pi} style={{position:"relative"}}>
                   <div onClick={()=>onSelect(p)} style={{background:selected&&selected.projectName===p.projectName?"#1a1400":C.card,padding:"12px 16px",paddingRight:"44px",cursor:"pointer",border:selected&&selected.projectName===p.projectName?"1px solid "+C.yellow:"1px solid "+C.border,borderLeftWidth:"4px",borderLeftColor:bc(p)}}>
                     <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px"}}>
@@ -357,15 +387,24 @@ function BDRow({project:p,saved,onSaveRow,onSelect}){
         <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}><Flag country={p.country}/><span onClick={()=>onSelect&&onSelect(p)} style={{cursor:"pointer",color:C.white,textDecoration:"underline",textDecorationStyle:"dotted",textUnderlineOffset:"3px"}}>{p.projectName}</span>{isDataCentre(p)&&<DCBadge/>}</div>
         <div style={{marginTop:"5px"}}><Badge text={p.procurementStatus} type="status"/></div>
       </td>
-      <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,fontWeight:"bold",whiteSpace:"nowrap"}}>{p.procurementStart||"TBD"}</td>
+      <td style={{padding:"8px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,fontWeight:"bold",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.35}}>{p.procurementStart||"TBD"}</td>
       <td style={{padding:"6px 7px"}}>
-        {contacts.map((c,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"4px",background:"#0d0d0d",padding:"5px 8px",borderLeft:"2px solid "+(BD_TYPE_COLORS[c.type]||"#555")}}>
-            <span style={{color:BD_TYPE_COLORS[c.type]||"#aaa",fontSize:"8px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px"}}>{c.type}</span>
-            <span style={{color:"#ddd",fontSize:"11px",fontFamily:"Arial,sans-serif",flex:1,lineHeight:1.4}}>{c.company}{c.name?<span style={{color:"#888"}}> · {c.name}</span>:""}</span>
-            <button onClick={()=>removeContact(i)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:"14px",padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>
-          </div>
-        ))}
+        {(()=>{
+          const byCo=[];const idx={};
+          contacts.forEach((c,i)=>{const k=(c.company||"").trim()||"(no company)";if(idx[k]===undefined){idx[k]=byCo.length;byCo.push({company:k,people:[]});}byCo[idx[k]].people.push({...c,_i:i});});
+          return byCo.map(g=>(
+            <div key={g.company} style={{marginBottom:"6px",background:"#0d0d0d",padding:"5px 8px",borderLeft:"2px solid "+(BD_TYPE_COLORS[g.people[0].type]||"#555")}}>
+              <div style={{color:"#fff",fontSize:"11px",fontWeight:"bold",fontFamily:"Arial,sans-serif",marginBottom:g.people.some(x=>x.name)?"3px":"0"}}>{g.company}</div>
+              {g.people.map(c=>(
+                <div key={c._i} style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"2px"}}>
+                  <span style={{color:BD_TYPE_COLORS[c.type]||"#aaa",fontSize:"8px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px"}}>{c.type}</span>
+                  <span style={{color:"#bbb",fontSize:"11px",fontFamily:"Arial,sans-serif",flex:1,lineHeight:1.4}}>{c.name||<span style={{color:"#555"}}>—</span>}</span>
+                  <button onClick={()=>removeContact(c._i)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:"14px",padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>
+                </div>
+              ))}
+            </div>
+          ));
+        })()}
         <div style={{display:"flex",gap:"4px",alignItems:"center",marginTop:"6px",flexWrap:"wrap"}}>
           <select value={nType} onChange={e=>setNType(e.target.value)} style={{background:"#0a0a0a",color:BD_TYPE_COLORS[nType]||"#bbb",border:"1px solid #2a2a2a",padding:"4px 5px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:"bold",width:"82px",cursor:"pointer"}}>
             <option>Developer</option><option>Tenderer</option><option>EPC</option>
@@ -380,30 +419,40 @@ function BDRow({project:p,saved,onSaveRow,onSelect}){
     </tr>
   );
 }
-function BDView({projects,bdData,onSaveRow,onSelect}){
-  const sorted=[...projects].sort((a,b)=>{
-    const da=parseProcurementDate(a.procurementStart),db=parseProcurementDate(b.procurementStart);
-    return (da?da.getTime():Infinity)-(db?db.getTime():Infinity);
-  });
-  const TH=({children,w})=><th style={{padding:"10px 10px",textAlign:"left",background:C.yellow,color:C.black,fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap",fontFamily:"Arial,sans-serif",width:w||"auto"}}>{children}</th>;
-  const filled=projects.filter(p=>{const d=bdData[(p.projectName||"").toLowerCase()];return d&&((d.contacts&&d.contacts.length>0)||d.bdStatus||d.nextSteps);}).length;
+function BDView({projects,bdData,onSaveRow,onSelect,searchQuery}){
+  const [sKey,setSKey]=React.useState("proc");
+  const [sDir,setSDir]=React.useState("asc");
+  function clickSort(k){if(sKey===k)setSDir(d=>d==="asc"?"desc":"asc");else{setSKey(k);setSDir("asc");}}
+  const visible=projects.filter(p=>matchesSearch(p,searchQuery));
+  const bdOf=p=>bdData[(p.projectName||"").toLowerCase()]||{};
+  const acc={
+    name:p=>String(p.projectName||"").toLowerCase(),
+    proc:p=>{const d=parseProcurementDate(p.procurementStart);return d?d.getTime():Infinity;},
+    contacts:p=>((bdOf(p).contacts||[]).length),
+    bdStatus:p=>String(bdOf(p).bdStatus||"").toLowerCase()||"~~~",
+    next:p=>String(bdOf(p).nextSteps||"").toLowerCase()||"~~~",
+  };
+  const sorted=[...visible].sort((a,b)=>{const av=acc[sKey](a),bv=acc[sKey](b);if(av<bv)return sDir==="asc"?-1:1;if(av>bv)return sDir==="asc"?1:-1;return 0;});
+  const TH=({children,w,k})=><th onClick={k?()=>clickSort(k):undefined} style={{padding:"10px 10px",textAlign:"left",background:C.yellow,color:C.black,fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap",fontFamily:"Arial,sans-serif",width:w||"auto",cursor:k?"pointer":"default",userSelect:"none"}}>{children}{k&&<span style={{marginLeft:"4px",color:sKey===k?C.black:"#a88000"}}>{sKey===k?(sDir==="asc"?"▲":"▼"):"⇅"}</span>}</th>;
+  const filled=visible.filter(p=>{const d=bdOf(p);return (d.contacts&&d.contacts.length>0)||d.bdStatus||d.nextSteps;}).length;
   return (
     <div>
       <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"14px"}}>
-        BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{projects.length}</span> pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · <span style={{color:"#4ADE80"}}>✓ auto-saved</span> locally in your browser · pin projects in the Project Table to add them here
+        BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{visible.length}</span>{searchQuery&&searchQuery.trim()?<span> of {projects.length} (search filtered)</span>:""} pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · <span style={{color:"#4ADE80"}}>✓ auto-saved</span> locally in your browser · pin projects in the Project Table to add them here · click column headers to sort
       </div>
       {projects.length===0&&<div style={{padding:"60px 20px",textAlign:"center",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>No pinned projects yet — click 📌 on any row in the <span style={{color:C.yellow,fontWeight:"bold"}}>PROJECT TABLE</span> to add it here.</div>}
-      {projects.length>0&&<div style={{overflowX:"auto"}}>
+      {projects.length>0&&visible.length===0&&<div style={{padding:"60px 20px",textAlign:"center",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>No pinned projects match your search.</div>}
+      {visible.length>0&&<div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:"980px",tableLayout:"fixed"}}>
           <thead><tr>
-            <TH w="160px">Project Name</TH>
-            <TH w="70px">Equip. Proc.</TH>
-            <TH w="240px">Contacts <span style={{fontWeight:"normal",textTransform:"none",letterSpacing:0,fontSize:"9px",opacity:0.7}}>— type · company · contact name</span></TH>
-            <TH w="240px">BD Status</TH>
-            <TH w="240px">Next Steps</TH>
+            <TH w="160px" k="name">Project Name</TH>
+            <TH w="90px" k="proc">Equip. Proc.</TH>
+            <TH w="230px" k="contacts">Contacts <span style={{fontWeight:"normal",textTransform:"none",letterSpacing:0,fontSize:"9px",opacity:0.7}}>— grouped by company</span></TH>
+            <TH w="230px" k="bdStatus">BD Status</TH>
+            <TH w="230px" k="next">Next Steps</TH>
           </tr></thead>
           <tbody>
-            {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdData[(p.projectName||"").toLowerCase()]||{}} onSaveRow={onSaveRow} onSelect={onSelect}/>)}
+            {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdOf(p)} onSaveRow={onSaveRow} onSelect={onSelect}/>)}
           </tbody>
         </table>
       </div>}
@@ -424,10 +473,12 @@ function App(){
   const [fStatus,setFStatus]=useState([]);
   const [fChange,setFChange]=useState("All");
   const [fHideStale,setFHideStale]=useState(true);
-  const [fDC,setFDC]=useState(false);
+  const [fAssets,setFAssets]=useState([]);
   const [fProcStart,setFProcStart]=useState([]);
   const [statusOpen,setStatusOpen]=useState(false);
+  const [assetsOpen,setAssetsOpen]=useState(false);
   const [procStartOpen,setProcStartOpen]=useState(false);
+  const [scanType,setScanType]=useState(null);
   const [sortKey,setSortKey]=useState("priority");
   const [sortDir,setSortDir]=useState("asc");
   const [bdData,setBdData]=useState({});
@@ -444,6 +495,24 @@ function App(){
       }catch(e){setError(e.message);}
       try{const rp=await fetch(PREV_URL,{headers:{"Accept":"application/json"}});if(rp.ok){const dp=await rp.json();prev=dp.projects||[];}}catch(e){}
       try{const r2=await fetch(LASTSCAN_URL,{headers:{"Accept":"application/json"}});if(r2.ok){const d2=await r2.json();if(d2.lastScan)setLastScan(d2.lastScan);}}catch(e){}
+      // Real last-scan from git history: latest commit touching projects.json (works for BOTH
+      // scheduled and manual Make runs — both commit "Weekly upsert ..."). Tagged AUTO if it
+      // landed in the scheduled Sunday ~02:00 Sydney window, else MANUAL.
+      try{
+        const rc=await fetch("https://api.github.com/repos/marceloakstein/bd-intel-x7k2/commits?path=projects.json&per_page=15",{headers:{"Accept":"application/vnd.github+json"}});
+        if(rc.ok){
+          const commits=await rc.json();
+          const scan=(commits||[]).find(c=>/upsert|scan/i.test(c.commit?.message||""));
+          if(scan){
+            const when=scan.commit.committer?.date||scan.commit.author?.date;
+            setLastScan(when);
+            const syd=new Date(when).toLocaleString("en-AU",{timeZone:"Australia/Sydney",weekday:"short",hour:"2-digit",hour12:false});
+            const m=syd.match(/(\w+),?\s*(\d{2})/);
+            const isAuto=m&&m[1].startsWith("Sun")&&(+m[2]>=1&&+m[2]<=3);
+            setScanType(isAuto?"auto":"manual");
+          }
+        }
+      }catch(e){}
       setProjects(computeChangeStatus(cur,prev));
       setLoading(false);
     })();
@@ -463,11 +532,11 @@ function App(){
     return {...p,_pinned:isPinned(p),_aiStatus:p.procurementStatus,_aiProcurementStart:p.procurementStart,_aiEpcContractor:p.epcContractor,_overrideMeta:ov||null,procurementStatus:ov?.status||p.procurementStatus,procurementStart:ov?.procurementStart||p.procurementStart,epcContractor:ov?.epcContractor||p.epcContractor};
   });
   const displayed=withPins
-    .filter(p=>{if(!fSearch.trim())return true;const q=fSearch.trim().toLowerCase();const hay=[p.projectName,p.location,p.summary,...(p.companies||[]),...(p.assetTypes||[]),...[p.owner].flat(),...[p.epcContractor].flat()].flat().join(" ").toLowerCase();return hay.includes(q);})
+    .filter(p=>matchesSearch(p,fSearch))
     .filter(p=>fCountry==="All"||p.country===fCountry)
     .filter(p=>fStatus.length===0||fStatus.includes(p.procurementStatus))
     .filter(p=>fChange==="All"||p._changeStatus===(fChange==="New"?"new":"updated"))
-    .filter(p=>!fDC||isDataCentre(p))
+    .filter(p=>fAssets.length===0||fAssets.some(k=>ASSET_FILTERS[k](p)))
     .filter(p=>fProcStart.length===0||fProcStart.includes(p.procurementStart))
     .filter(p=>!fHideStale||!isStale(p))
     .sort((a,b)=>{
@@ -502,8 +571,8 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFDC(false);setFProcStart([]);setFHideStale(true);}
-  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fDC||fProcStart.length>0;
+  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFAssets([]);setFProcStart([]);setFHideStale(true);}
+  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fAssets.length>0||fProcStart.length>0;
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
   const fmt=iso=>{
@@ -528,6 +597,7 @@ function App(){
   const brCount=withPins.filter(p=>p.country==="Brazil").length;
   const activeCount=withPins.filter(p=>!isStale(p)).length;
   const dcCount=withPins.filter(isDataCentre).length;
+  const txCount=withPins.filter(ASSET_FILTERS["HV Transmission"]).length;
   const newCount=withPins.filter(p=>p._changeStatus==="new").length;
   const updCount=withPins.filter(p=>p._changeStatus==="updated").length;
   const pinCount=withPins.filter(p=>p._pinned).length;
@@ -545,19 +615,20 @@ function App(){
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"1px"}}>Auto-updated weekly · Sundays</div>
-          {(()=>{const stale=lastScan&&(Date.now()-new Date(lastScan).getTime())>30*24*60*60*1000;return(<><div style={{color:"#777",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:stale?"#ff5555":"#aaa"}}>{fmt(lastScan)}</span></div>{stale&&<div style={{color:"#ff5555",fontSize:"10px",fontFamily:"Arial,sans-serif",marginTop:"2px",fontWeight:"bold",letterSpacing:"0.5px"}}>⚠ DATA MAY BE STALE</div>}</>);})()}
+          {(()=>{const stale=lastScan&&(Date.now()-new Date(lastScan).getTime())>30*24*60*60*1000;return(<><div style={{color:"#777",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:stale?"#ff5555":"#aaa"}}>{fmt(lastScan)}</span>{scanType&&<span style={{marginLeft:"6px",padding:"1px 6px",fontSize:"9px",fontWeight:"bold",letterSpacing:"0.5px",background:scanType==="auto"?"#0d2914":"#1c1c00",color:scanType==="auto"?"#4ADE80":C.yellow,border:"1px solid "+(scanType==="auto"?"#4ADE80":C.yellow)}}>{scanType==="auto"?"AUTO":"MANUAL"}</span>}</div>{stale&&<div style={{color:"#ff5555",fontSize:"10px",fontFamily:"Arial,sans-serif",marginTop:"2px",fontWeight:"bold",letterSpacing:"0.5px"}}>⚠ DATA MAY BE STALE</div>}</>);})()}
         </div>
       </div>
       {loading&&<div style={{padding:"60px 28px",textAlign:"center",color:C.yellow,fontFamily:"'Courier New',monospace",fontSize:"13px"}}>Loading intelligence data…</div>}
       {error&&<div style={{padding:"20px 28px",color:"#e05050",fontFamily:"'Courier New',monospace",fontSize:"12px",background:"#1a0808",borderBottom:"1px solid "+C.border}}>⚠ {error}</div>}
       {!loading&&(
         <div style={{background:"#060606",padding:"18px 28px",display:"flex",gap:"40px",flexWrap:"wrap",borderBottom:"1px solid "+C.border}}>
-          <StatCard value={withPins.length} label="Total Projects" accent/>
+          <StatCard value={activeCount} label="Active Projects" accent/>
           <StatCard value={auCount+" 🇦🇺"} label="Australia"/>
           <StatCard value={brCount+" 🇧🇷"} label="Brazil"/>
           <StatCard value={"📌 "+pinCount} label="Pinned" accent/>
-          {dcCount>0&&<StatCard value={"🖥 "+dcCount} label="Data Centres" color="#7cc4ff"/>}
-          <StatCard value={activeCount} label="Active Projects"/>
+          {dcCount>0&&<StatCard value={"🖥 "+dcCount} label="Data Centres" color="#7cc4ff" active={fAssets.includes("Data Centre")} onClick={()=>setFAssets(cur=>cur.includes("Data Centre")?cur.filter(x=>x!=="Data Centre"):[...cur,"Data Centre"])}/>}
+          {txCount>0&&<StatCard value={"⚡ "+txCount} label="Transmission" color="#ff9940" active={fAssets.includes("HV Transmission")} onClick={()=>setFAssets(cur=>cur.includes("HV Transmission")?cur.filter(x=>x!=="HV Transmission"):[...cur,"HV Transmission"])}/>}
+          {anyFilter&&<StatCard value={"🔎 "+displayed.length} label="Matching Filters" color="#4ADE80"/>}
           {(newCount>0||updCount>0)&&<><StatCard value={"🆕 "+newCount} label="New This Scan" color={C.newColor}/><StatCard value={"↻ "+updCount} label="Updated This Scan" color={C.updatedColor}/></>}
           {lowConfCount>0&&<StatCard value={"⚠ "+lowConfCount} label="Low Confidence" color="#ff5555"/>}
           {overrideCount>0&&<StatCard value={"✎ "+overrideCount} label="User Overrides" color="#cc77ff"/>}
@@ -597,7 +668,22 @@ function App(){
                 </div>
               )}
             </div>
-<button onClick={()=>setFDC(v=>!v)} style={{background:fDC?"#7cc4ff":"#0d0d0d",color:fDC?C.black:"#bbb",border:"1px solid "+(fDC?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fDC?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>🖥 DATA CENTRES ONLY</button>
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setAssetsOpen(o=>!o)} style={{background:fAssets.length?"#7cc4ff":"#0d0d0d",color:fAssets.length?C.black:"#bbb",border:"1px solid "+(fAssets.length?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fAssets.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
+                {fAssets.length?"ASSET TYPES ("+fAssets.length+")":"ALL ASSET TYPES"} ▾
+              </button>
+              {assetsOpen&&(
+                <div style={{position:"absolute",top:"32px",left:0,background:"#0d0d0d",border:"1px solid "+C.border,zIndex:50,minWidth:"190px",padding:"6px 0",boxShadow:"0 4px 12px rgba(0,0,0,0.5)"}}>
+                  {ASSET_KEYS.map(s=>(
+                    <label key={s} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 12px",cursor:"pointer",fontFamily:"Arial,sans-serif",fontSize:"11px",color:fAssets.includes(s)?"#7cc4ff":"#888"}}>
+                      <input type="checkbox" checked={fAssets.includes(s)} onChange={()=>setFAssets(cur=>cur.includes(s)?cur.filter(x=>x!==s):[...cur,s])} style={{accentColor:"#7cc4ff"}}/>
+                      {s==="Data Centre"?"🖥 Data Centre":s==="HV Transmission"?"⚡ HV Transmission":s==="Substation"?"🔌 Substation":s}
+                    </label>
+                  ))}
+                  <div style={{padding:"6px 12px 2px",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"9px",lineHeight:1.4}}>Shows projects matching ANY ticked type</div>
+                </div>
+              )}
+            </div>
             <div style={{position:"relative"}}>
               <button onClick={()=>setProcStartOpen(o=>!o)} style={{background:fProcStart.length?C.yellow:"#0d0d0d",color:fProcStart.length?C.black:"#bbb",border:"1px solid "+(fProcStart.length?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fProcStart.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
                 {fProcStart.length?"PROC. DATE ("+fProcStart.length+")":"ALL PROC. DATES"} ▾
@@ -675,7 +761,7 @@ function App(){
           ):tab==="timeline"?(
             <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
           ):tab==="bd"?(
-            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} onSaveRow={saveBDRow} onSelect={openProject}/>
+            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} onSaveRow={saveBDRow} onSelect={openProject} searchQuery={fSearch}/>
           ):(
             selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride} onSetEpc={setEpcOverride}/>:(
               <div style={{textAlign:"center",padding:"100px 20px"}}>
