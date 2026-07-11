@@ -373,7 +373,20 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
     </div>
   );
 }
-const BD_TYPE_COLORS={"Developer":"#4ADE80","Tenderer":"#38BDF8","EPC":C.yellow};
+const BD_TYPE_COLORS={"Developer":"#4ADE80","Tenderer":"#38BDF8","EPC":C.yellow,"Financier":"#cc77ff"};
+// Companies the scan already knows for this project, by contact type — feeds the
+// Company combo box on the BD tab so known names never have to be re-typed.
+function knownCompanies(p,type){
+  const split=v=>{const s=Array.isArray(v)?v.join(","):(v||"");return s.split(/,|;|\/|\band\b|&/).map(x=>x.replace(/\(.*?\)/g,"").trim()).filter(x=>x.length>1);};
+  let src;
+  if(type==="Developer")src=p.owner;
+  else if(type==="Financier")src=p.financiers||p.fundingSources;
+  else src=p.epcContractor; // Tenderer + EPC share the epcContractor field
+  const parts=split(src);
+  const whole=(Array.isArray(src)?src.join(", "):String(src||"")).trim();
+  const all=whole&&parts.length>1?[whole,...parts]:parts;
+  return [...new Set(all)];
+}
 function BDRow({project:p,saved,onSaveRow,onSelect}){
   const [contacts,setContacts]=React.useState(saved.contacts||[]);
   const [nType,setNType]=React.useState("Developer");
@@ -420,9 +433,16 @@ function BDRow({project:p,saved,onSaveRow,onSelect}){
         })()}
         <div style={{display:"flex",gap:"4px",alignItems:"center",marginTop:"6px",flexWrap:"wrap"}}>
           <select value={nType} onChange={e=>setNType(e.target.value)} style={{background:"#0a0a0a",color:BD_TYPE_COLORS[nType]||"#bbb",border:"1px solid #2a2a2a",padding:"4px 5px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:"bold",width:"82px",cursor:"pointer"}}>
-            <option>Developer</option><option>Tenderer</option><option>EPC</option>
+            <option>Developer</option><option>Tenderer</option><option>EPC</option><option>Financier</option>
           </select>
-          {inp(nCompany,setNCompany,"Company name","calc(50% - 50px)")}
+          {(()=>{
+            const known=knownCompanies(p,nType);
+            const listId="mp-cos-"+(p.projectName||"").replace(/[^a-zA-Z0-9]/g,"");
+            return <>
+              <input value={nCompany} onChange={e=>setNCompany(e.target.value)} list={listId} placeholder={known.length?"Company — pick known or type":"Company name"} title={known.length?"Known for this project: "+known.join(" · "):""} style={{background:"#0a0a0a",color:"#ddd",border:"1px solid "+(known.length?"#3a3a1a":"#2a2a2a"),padding:"4px 6px",fontFamily:"Arial,sans-serif",fontSize:"10px",outline:"none",width:"calc(50% - 50px)",boxSizing:"border-box"}}/>
+              <datalist id={listId}>{known.map(c=><option key={c} value={c}/>)}</datalist>
+            </>;
+          })()}
           <input value={nContact} onChange={e=>setNContact(e.target.value)} placeholder="Contact name" onKeyDown={e=>e.key==="Enter"&&addContact()} style={{background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"4px 6px",fontFamily:"Arial,sans-serif",fontSize:"10px",outline:"none",flex:1,boxSizing:"border-box"}}/>
           <button onClick={addContact} style={{background:"#1a1a1a",color:C.yellow,border:"1px solid "+C.yellow,padding:"4px 10px",fontFamily:"Arial,sans-serif",fontSize:"12px",cursor:"pointer",fontWeight:"bold",flexShrink:0}}>+</button>
         </div>
