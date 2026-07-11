@@ -246,16 +246,29 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
               <div style={{color:"#bbb",fontFamily:"Arial,sans-serif",fontSize:"13px",lineHeight:"1.7"}}>{val}</div>
             </div>
           ))}
-          {p.sourceUrl&&(()=>{
-  const url=p.sourceUrl.startsWith("http")?p.sourceUrl:"https://"+p.sourceUrl;
+          {(()=>{
+  const raw=(p.sourceUrl||"").trim();
+  // Junk detection: empty, placeholder domains (Gemini sometimes fabricates example.com),
+  // redirects, or strings that aren't URLs at all → fall back to a project-name search.
+  const isJunk=!raw||/example\.(com|org|net)|placeholder|vertexaisearch|google\.\w+\/search|localhost/i.test(raw)||!/\./.test(raw);
+  const linkStyle={color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"};
+  const hint=t=><span style={{color:"#555",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>{t}</span>;
+  if(isJunk){
+    const q="https://www.google.com/search?q="+encodeURIComponent('"'+p.projectName+'" '+(Array.isArray(p.owner)?p.owner[0]||"":p.owner||""));
+    return <div style={{marginTop:"8px",display:"flex",flexDirection:"column",gap:"4px"}}>
+      <a href={q} target="_blank" rel="noreferrer" style={linkStyle}>→ Search for source article</a>
+      {hint("No reliable source URL from the scan — opens a Google search for this project")}
+    </div>;
+  }
+  const url=raw.startsWith("http")?raw:"https://"+raw;
   const isDomainOnly=!url.replace(/^https?:\/\//,"").includes("/");
   const domain=url.replace(/^https?:\/\//,"").replace(/\/$/,"");
   const searchUrl="https://www.google.com/search?q="+encodeURIComponent('"'+p.projectName+'" site:'+domain)+"&num=3";
   return <div style={{marginTop:"8px",display:"flex",flexDirection:"column",gap:"4px"}}>
     {isDomainOnly
-      ?<><a href={searchUrl} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>→ Find article on {domain}</a>
-        <span style={{color:"#555",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>Opens Google — click the top result to open the article directly</span></>
-      :<a href={url} target="_blank" rel="noreferrer" style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"12px",textDecoration:"none"}}>→ View source article</a>
+      ?<><a href={searchUrl} target="_blank" rel="noreferrer" style={linkStyle}>→ Find article on {domain}</a>
+        {hint("Opens Google — click the top result to open the article directly")}</>
+      :<a href={url} target="_blank" rel="noreferrer" style={linkStyle}>→ View source article</a>
     }
   </div>;
 })()}
