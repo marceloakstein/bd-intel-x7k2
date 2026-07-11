@@ -677,7 +677,10 @@ function App(){
             ))}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 0",flexWrap:"wrap"}}>
-            <input value={fSearch} onChange={e=>setFSearch(e.target.value)} placeholder="🔍 Search projects…" style={{background:"#0d0d0d",color:C.white,border:"1px solid "+(fSearch.trim()?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"11px",outline:"none",width:"180px",letterSpacing:"0.3px"}}/>
+            <div style={{position:"relative",display:"inline-block"}}>
+              <input value={fSearch} onChange={e=>setFSearch(e.target.value)} placeholder="🔍 Search projects…" style={{background:"#0d0d0d",color:C.white,border:"1px solid "+(fSearch.trim()?C.yellow:C.border),padding:"6px 26px 6px 10px",fontFamily:"Arial,sans-serif",fontSize:"11px",outline:"none",width:"180px",letterSpacing:"0.3px",boxSizing:"border-box"}}/>
+              {fSearch&&<button onClick={()=>setFSearch("")} title="Clear search" style={{position:"absolute",right:"6px",top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#888",cursor:"pointer",fontSize:"13px",lineHeight:1,padding:"2px"}}>✕</button>}
+            </div>
             {[
               {val:fCountry,set:setFCountry,opts:["All","Australia","Brazil"],ph:"ALL COUNTRIES"},
               {val:fChange,set:setFChange,opts:["All","New","Updated"],ph:"ALL CHANGES"},
