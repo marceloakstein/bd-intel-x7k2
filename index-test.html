@@ -466,7 +466,7 @@ function BDRow({project:p,saved,sug,onSaveRow,onUpdateSug,onSelect}){
             {sugOpen&&sug.map((s,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:"5px",flexWrap:"wrap",padding:"5px 8px",borderTop:"1px solid #2a2010"}}>
                 <span style={{color:BD_TYPE_COLORS[s.type]||"#aaa",fontSize:"8px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px",fontFamily:"Arial,sans-serif"}}>{s.type}</span>
-                <span style={{color:"#ccc",fontSize:"11px",fontFamily:"Arial,sans-serif",flex:1,minWidth:"110px",lineHeight:1.4}}>{s.name?<b style={{color:"#eee"}}>{s.name}</b>:null}{s.name&&s.role?" — ":""}{s.role||""}{s.company?<span style={{color:"#888"}}> · {s.company}</span>:null}</span>
+                <span style={{color:"#ccc",fontSize:"11px",fontFamily:"Arial,sans-serif",flex:1,minWidth:"110px",lineHeight:1.4}}><span style={{color:"#fff",fontWeight:"bold"}}>{s.company||"(company)"}</span>{(s.name||s.role)?<span style={{color:"#bbb",display:"block",marginTop:"1px"}}>{s.name||""}{s.name&&s.role?" — ":""}{s.role||""}</span>:null}</span>
                 {s.conf?<span style={{fontSize:"8px",color:s.conf==="high"?"#4ea865":(s.conf==="med"?"#e0902a":"#c56b6b"),border:"1px solid #444",padding:"1px 4px"}}>{s.conf}</span>:null}
                 {s.src?<a href={s.src.indexOf("http")===0?s.src:"https://"+s.src} target="_blank" rel="noopener" style={{color:"#5a9bd8",fontSize:"9px"}}>src</a>:null}
                 <button onClick={()=>acceptSug(s,i)} title="Add to contacts" style={{background:"rgba(78,168,101,0.15)",border:"1px solid #2f5c3c",color:"#7bd196",fontSize:"10px",padding:"2px 7px",cursor:"pointer",fontFamily:"Arial,sans-serif",flexShrink:0}}>✓ Add</button>
