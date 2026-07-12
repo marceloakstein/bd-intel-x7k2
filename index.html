@@ -25,6 +25,7 @@ const LASTSCAN_URL = "last-scan.json";
 const PIN_KEY      = "mp-pins-v1";
 const OVERRIDE_KEY = "mp-overrides-v1";
 const BD_KEY       = "mp-bd-v1";
+const SUG_KEY      = "mp-bd-suggested-v1";
 const C = {
   yellow:"#FDB422", black:"#000000", white:"#FFFFFF",
   card:"#0d0d0d", border:"#1e1e1e", muted:"#888888",
@@ -387,8 +388,9 @@ function knownCompanies(p,type){
   const all=whole&&parts.length>1?[whole,...parts]:parts;
   return [...new Set(all)];
 }
-function BDRow({project:p,saved,onSaveRow,onSelect}){
+function BDRow({project:p,saved,sug,onSaveRow,onUpdateSug,onSelect}){
   const [contacts,setContacts]=React.useState(saved.contacts||[]);
+  const [sugOpen,setSugOpen]=React.useState(true);
   const [nType,setNType]=React.useState("Developer");
   const [nCompany,setNCompany]=React.useState("");
   const [nContact,setNContact]=React.useState("");
@@ -405,6 +407,14 @@ function BDRow({project:p,saved,onSaveRow,onSelect}){
     setContacts(updated);
     onSaveRow(p.projectName,{contacts:updated,bdStatus,nextSteps});
   }
+  function acceptSug(s,idx){
+    const nm=s.name?(s.role?s.name+" — "+s.role:s.name):(s.role||"");
+    const updated=[...contacts,{type:s.type||"Developer",company:s.company||"",name:nm}];
+    setContacts(updated);
+    onSaveRow(p.projectName,{contacts:updated,bdStatus,nextSteps});
+    onUpdateSug&&onUpdateSug(p.projectName,(sug||[]).filter((_,i)=>i!==idx));
+  }
+  function dismissSug(idx){onUpdateSug&&onUpdateSug(p.projectName,(sug||[]).filter((_,i)=>i!==idx));}
   const inp=(val,set,ph,w)=><input value={val} onChange={e=>set(e.target.value)} placeholder={ph} style={{background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"4px 6px",fontFamily:"Arial,sans-serif",fontSize:"10px",outline:"none",width:w||"100%",boxSizing:"border-box"}}/>;
   const ta=(val,set,field,ph)=><textarea value={val} onChange={e=>{set(e.target.value);onSaveRow(p.projectName,{contacts,...(field==="bdStatus"?{bdStatus:e.target.value,nextSteps}:{bdStatus,nextSteps:e.target.value})});}} placeholder={ph} rows={4} style={{width:"100%",background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"5px 7px",fontFamily:"Arial,sans-serif",fontSize:"11px",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.5}}/>;
   return (
@@ -446,13 +456,32 @@ function BDRow({project:p,saved,onSaveRow,onSelect}){
           <input value={nContact} onChange={e=>setNContact(e.target.value)} placeholder="Contact name" onKeyDown={e=>e.key==="Enter"&&addContact()} style={{background:"#0a0a0a",color:"#ddd",border:"1px solid #2a2a2a",padding:"4px 6px",fontFamily:"Arial,sans-serif",fontSize:"10px",outline:"none",flex:1,boxSizing:"border-box"}}/>
           <button onClick={addContact} style={{background:"#1a1a1a",color:C.yellow,border:"1px solid "+C.yellow,padding:"4px 10px",fontFamily:"Arial,sans-serif",fontSize:"12px",cursor:"pointer",fontWeight:"bold",flexShrink:0}}>+</button>
         </div>
+        {sug&&sug.length>0&&(
+          <div style={{marginTop:"10px",border:"1px dashed #7a5a1e",background:"rgba(240,170,40,0.06)"}}>
+            <div onClick={()=>setSugOpen(!sugOpen)} style={{display:"flex",alignItems:"center",gap:"6px",padding:"6px 8px",cursor:"pointer",color:"#e0b45a",fontSize:"10px",fontWeight:"bold",fontFamily:"Arial,sans-serif"}}>
+              <span>SUGGESTED CONTACTS ({sug.length})</span>
+              <span style={{fontSize:"8px",color:"#9a7a3a",border:"1px solid #6a4a15",padding:"1px 5px",fontWeight:"normal"}}>unverified</span>
+              <span style={{marginLeft:"auto",fontSize:"9px"}}>{sugOpen?"▲":"▼"}</span>
+            </div>
+            {sugOpen&&sug.map((s,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:"5px",flexWrap:"wrap",padding:"5px 8px",borderTop:"1px solid #2a2010"}}>
+                <span style={{color:BD_TYPE_COLORS[s.type]||"#aaa",fontSize:"8px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px",fontFamily:"Arial,sans-serif"}}>{s.type}</span>
+                <span style={{color:"#ccc",fontSize:"11px",fontFamily:"Arial,sans-serif",flex:1,minWidth:"110px",lineHeight:1.4}}>{s.name?<b style={{color:"#eee"}}>{s.name}</b>:null}{s.name&&s.role?" — ":""}{s.role||""}{s.company?<span style={{color:"#888"}}> · {s.company}</span>:null}</span>
+                {s.conf?<span style={{fontSize:"8px",color:s.conf==="high"?"#4ea865":(s.conf==="med"?"#e0902a":"#c56b6b"),border:"1px solid #444",padding:"1px 4px"}}>{s.conf}</span>:null}
+                {s.src?<a href={s.src.indexOf("http")===0?s.src:"https://"+s.src} target="_blank" rel="noopener" style={{color:"#5a9bd8",fontSize:"9px"}}>src</a>:null}
+                <button onClick={()=>acceptSug(s,i)} title="Add to contacts" style={{background:"rgba(78,168,101,0.15)",border:"1px solid #2f5c3c",color:"#7bd196",fontSize:"10px",padding:"2px 7px",cursor:"pointer",fontFamily:"Arial,sans-serif",flexShrink:0}}>✓ Add</button>
+                <button onClick={()=>dismissSug(i)} title="Dismiss" style={{background:"none",border:"1px solid #4a3030",color:"#c98a8a",fontSize:"10px",padding:"2px 7px",cursor:"pointer",fontFamily:"Arial,sans-serif",flexShrink:0}}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
       </td>
       <td style={{padding:"5px 6px"}}>{ta(bdStatus,setBdStatus,"bdStatus","e.g. Engaged, Not contacted, Meeting booked…")}</td>
       <td style={{padding:"5px 6px"}}>{ta(nextSteps,setNextSteps,"nextSteps","e.g. Follow up Q3, Send capability statement…")}</td>
     </tr>
   );
 }
-function BDView({projects,bdData,onSaveRow,onSelect,searchQuery}){
+function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onSelect,searchQuery}){
   const [sKey,setSKey]=React.useState("proc");
   const [sDir,setSDir]=React.useState("asc");
   function clickSort(k){if(sKey===k)setSDir(d=>d==="asc"?"desc":"asc");else{setSKey(k);setSDir("asc");}}
@@ -485,7 +514,7 @@ function BDView({projects,bdData,onSaveRow,onSelect,searchQuery}){
             <TH w="230px" k="next">Next Steps</TH>
           </tr></thead>
           <tbody>
-            {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdOf(p)} onSaveRow={onSaveRow} onSelect={onSelect}/>)}
+            {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdOf(p)} sug={sugData[(p.projectName||"").toLowerCase()]||[]} onSaveRow={onSaveRow} onUpdateSug={onUpdateSug} onSelect={onSelect}/>)}
           </tbody>
         </table>
       </div>}
@@ -515,10 +544,12 @@ function App(){
   const [sortKey,setSortKey]=useState("priority");
   const [sortDir,setSortDir]=useState("asc");
   const [bdData,setBdData]=useState({});
+  const [sugData,setSugData]=useState({});
   useEffect(()=>{
     try{const raw=localStorage.getItem(PIN_KEY);if(raw)setPins(JSON.parse(raw));}catch(e){}
     try{const raw=localStorage.getItem(OVERRIDE_KEY);if(raw)setOverrides(JSON.parse(raw));}catch(e){}
     try{const raw=localStorage.getItem(BD_KEY);if(raw)setBdData(JSON.parse(raw));}catch(e){}
+    try{const raw=localStorage.getItem(SUG_KEY);if(raw)setSugData(JSON.parse(raw));}catch(e){}
     (async()=>{
       let cur=[],prev=[];
       try{
@@ -557,6 +588,7 @@ function App(){
   function setProcStartOverride(projectName,procStart){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={...(no[k]||{}),procurementStart:procStart,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
   function setEpcOverride(projectName,epc){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={...(no[k]||{}),epcContractor:epc,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
   function saveBDRow(projectName,fields){const k=(projectName||"").toLowerCase();const no={...bdData};no[k]={...(no[k]||{}),...fields};setBdData(no);try{localStorage.setItem(BD_KEY,JSON.stringify(no));}catch(e){}}
+  function updateSug(projectName,arr){const k=(projectName||"").toLowerCase();const no={...sugData};if(arr&&arr.length)no[k]=arr;else delete no[k];setSugData(no);try{localStorage.setItem(SUG_KEY,JSON.stringify(no));}catch(e){}}
   function clearStatusOverride(projectName){const k=(projectName||"").toLowerCase();const no={...overrides};delete no[k];saveOverrides(no);}
   const isPinned=(p)=>!!pins[(p.projectName||"").toLowerCase()];
   const order={High:0,Medium:1,Low:2};
@@ -797,7 +829,7 @@ function App(){
           ):tab==="timeline"?(
             <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
           ):tab==="bd"?(
-            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} onSaveRow={saveBDRow} onSelect={openProject} searchQuery={fSearch}/>
+            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} sugData={sugData} onSaveRow={saveBDRow} onUpdateSug={updateSug} onSelect={openProject} searchQuery={fSearch}/>
           ):(
             selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride} onSetEpc={setEpcOverride}/>:(
               <div style={{textAlign:"center",padding:"100px 20px"}}>
