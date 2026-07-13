@@ -580,25 +580,34 @@ function App(){
         const d=await r.json();cur=d.projects||[];if(d.lastScan)setLastScan(d.lastScan);
       }catch(e){setError(e.message);}
       try{const rp=await fetch(PREV_URL,{headers:{"Accept":"application/json"}});if(rp.ok){const dp=await rp.json();prev=dp.projects||[];}}catch(e){}
-      try{const r2=await fetch(LASTSCAN_URL,{headers:{"Accept":"application/json"}});if(r2.ok){const d2=await r2.json();if(d2.lastScan)setLastScan(d2.lastScan);}}catch(e){}
-      // Real last-scan from git history: latest commit touching projects.json (works for BOTH
-      // scheduled and manual Make runs — both commit "Weekly upsert ..."). Tagged AUTO if it
-      // landed in the scheduled Sunday ~02:00 Sydney window, else MANUAL.
+      // Heartbeat: every scan run (even one that finds nothing new) rewrites last-scan.json.
+      let fileScan=null;
+      try{const r2=await fetch(LASTSCAN_URL+"?t="+Date.now(),{headers:{"Accept":"application/json"}});if(r2.ok){const d2=await r2.json();if(d2.lastScan)fileScan=d2.lastScan;}}catch(e){}
+      // Latest DATA commit on projects.json (manual + scheduled runs both commit "Weekly upsert").
+      // If the heartbeat is newer than the last data commit, the most recent scan ran but found
+      // nothing new — show it with a NO NEW DATA tag instead of pretending nothing happened.
       try{
         const rc=await fetch("https://api.github.com/repos/marceloakstein/bd-intel-x7k2/commits?path=projects.json&per_page=15",{headers:{"Accept":"application/vnd.github+json"}});
+        let when=null;
         if(rc.ok){
           const commits=await rc.json();
           const scan=(commits||[]).find(c=>/upsert|scan/i.test(c.commit?.message||""));
-          if(scan){
-            const when=scan.commit.committer?.date||scan.commit.author?.date;
-            setLastScan(when);
-            const syd=new Date(when).toLocaleString("en-AU",{timeZone:"Australia/Sydney",weekday:"short",hour:"2-digit",hour12:false});
-            const m=syd.match(/(\w+),?\s*(\d{2})/);
-            const isAuto=m&&m[1].startsWith("Sun")&&(+m[2]>=1&&+m[2]<=3);
-            setScanType(isAuto?"auto":"manual");
-          }
+          if(scan)when=scan.commit.committer?.date||scan.commit.author?.date;
         }
-      }catch(e){}
+        const fileT=fileScan?new Date(fileScan).getTime():0;
+        const commitT=when?new Date(when).getTime():0;
+        if(fileT>commitT+5*60*1000){
+          setLastScan(fileScan);setScanType("nochange");
+        }else if(when){
+          setLastScan(when);
+          const syd=new Date(when).toLocaleString("en-AU",{timeZone:"Australia/Sydney",weekday:"short",hour:"2-digit",hour12:false});
+          const m=syd.match(/(\w+),?\s*(\d{2})/);
+          const isAuto=m&&m[1].startsWith("Sun")&&(+m[2]>=1&&+m[2]<=3);
+          setScanType(isAuto?"auto":"manual");
+        }else if(fileScan){
+          setLastScan(fileScan);setScanType("nochange");
+        }
+      }catch(e){if(fileScan)setLastScan(fileScan);}
       setProjects(computeChangeStatus(cur,prev));
       setLoading(false);
     })();
@@ -752,7 +761,7 @@ function App(){
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{color:C.yellow,fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"1px"}}>Auto-updated weekly · Sundays</div>
-          {(()=>{const stale=lastScan&&(Date.now()-new Date(lastScan).getTime())>30*24*60*60*1000;return(<><div style={{color:"#777",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:stale?"#ff5555":"#aaa"}}>{fmt(lastScan)}</span>{scanType&&<span style={{marginLeft:"6px",padding:"1px 6px",fontSize:"9px",fontWeight:"bold",letterSpacing:"0.5px",background:scanType==="auto"?"#0d2914":"#1c1c00",color:scanType==="auto"?"#4ADE80":C.yellow,border:"1px solid "+(scanType==="auto"?"#4ADE80":C.yellow)}}>{scanType==="auto"?"AUTO":"MANUAL"}</span>}</div>{stale&&<div style={{color:"#ff5555",fontSize:"10px",fontFamily:"Arial,sans-serif",marginTop:"2px",fontWeight:"bold",letterSpacing:"0.5px"}}>⚠ DATA MAY BE STALE</div>}</>);})()}
+          {(()=>{const stale=lastScan&&(Date.now()-new Date(lastScan).getTime())>30*24*60*60*1000;return(<><div style={{color:"#777",fontSize:"11px",fontFamily:"Arial,sans-serif",marginTop:"4px"}}>Last scan: <span style={{color:stale?"#ff5555":"#aaa"}}>{fmt(lastScan)}</span>{scanType&&<span title={scanType==="nochange"?"The scan ran but found no new projects or updates":""} style={{marginLeft:"6px",padding:"1px 6px",fontSize:"9px",fontWeight:"bold",letterSpacing:"0.5px",background:scanType==="auto"?"#0d2914":scanType==="nochange"?"#151515":"#1c1c00",color:scanType==="auto"?"#4ADE80":scanType==="nochange"?"#888":C.yellow,border:"1px solid "+(scanType==="auto"?"#4ADE80":scanType==="nochange"?"#444":C.yellow)}}>{scanType==="auto"?"AUTO":scanType==="nochange"?"RAN · NO NEW DATA":"MANUAL"}</span>}</div>{stale&&<div style={{color:"#ff5555",fontSize:"10px",fontFamily:"Arial,sans-serif",marginTop:"2px",fontWeight:"bold",letterSpacing:"0.5px"}}>⚠ DATA MAY BE STALE</div>}</>);})()}
         </div>
       </div>
       {loading&&<div style={{padding:"60px 28px",textAlign:"center",color:C.yellow,fontFamily:"'Courier New',monospace",fontSize:"13px"}}>Loading intelligence data…</div>}
