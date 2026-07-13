@@ -7,10 +7,13 @@
 </head>
 <body style="margin:0;padding:0;background:#000;">
 <!--
-  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v2 2026-07-11)
+  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v3 2026-07-13)
   Read-only. Fetches projects.json + projects-prev.json from the SAME repo (same origin, no auth).
   Features: HV + Data Centre badges, multi-select status, reset filters, change highlighting,
   single left pin (per-viewer localStorage), Selected Project tab.
+  v3: BD backup export/restore, CSV export, error boundary, crash guard, wider date parsing,
+  dropdowns close on outside click, clickable New/Updated/Low-conf stat cards, persisted
+  timeline collapse, contrast fixes.
   Live at https://marceloakstein.github.io/bd-intel-x7k2/
 -->
 <div id="mp-root">Loading dashboard…</div>
@@ -66,6 +69,12 @@ function parseProcurementDate(s){
   if(hm){return new Date(parseInt(hm[2]),hm[1]==="1"?0:6,1);}
   const ym=s.match(/^(\d{4})$/);
   if(ym)return new Date(parseInt(ym[1]),0,1);
+  const mm=s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{4})/i);
+  if(mm){const mos=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];return new Date(parseInt(mm[2]),mos.indexOf(mm[1].toLowerCase()),1);}
+  const iso=s.match(/^(\d{4})-(\d{1,2})/);
+  if(iso){const mo=parseInt(iso[2]);if(mo>=1&&mo<=12)return new Date(parseInt(iso[1]),mo-1,1);}
+  const eml=s.match(/\b(early|mid|late)\s+(\d{4})/i);
+  if(eml){const mo={early:0,mid:5,late:8}[eml[1].toLowerCase()];return new Date(parseInt(eml[2]),mo,1);}
   return null;
 }
 function isStale(p){
@@ -89,7 +98,7 @@ function hasDateStatusMismatch(p){
   return d<new Date();
 }
 function computeChangeStatus(cur, prev){
-  const prevMap=new Map((prev||[]).map(p=>[p.projectName.toLowerCase(),p]));
+  const prevMap=new Map((prev||[]).filter(p=>p&&p.projectName).map(p=>[String(p.projectName).toLowerCase(),p]));
   const watch=["procurementStatus","procurementStart","priority","capacityMW","mpEngagementWindow","projectValue"];
   return cur.map(p=>{
     const pr=prevMap.get((p.projectName||"").toLowerCase());
@@ -133,7 +142,7 @@ function ConfidenceDot({confidence}){
   const {c="#555",t=confidence}=map[confidence]||{};
   return <span title={t} style={{display:"inline-block",width:"7px",height:"7px",borderRadius:"50%",background:c,verticalAlign:"middle",marginLeft:"3px",flexShrink:0,cursor:"help"}}/>;
 }
-function OverrideBadge(){return <span title="Status manually overridden by user — not from AI scan" style={{background:"#1a0030",color:"#cc77ff",border:"1px dashed #cc77ff",padding:"1px 5px",fontSize:"8px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.4px",display:"inline-block",whiteSpace:"nowrap"}}>✎ OVERRIDE</span>;}
+function OverrideBadge(){return <span title="Status manually overridden by user — not from AI scan" style={{background:"#1a0030",color:"#cc77ff",border:"1px dashed #cc77ff",padding:"1px 5px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.4px",display:"inline-block",whiteSpace:"nowrap"}}>✎ OVERRIDE</span>;}
 function ChangeBadge({status}){
   if(status==="new")return <span style={{background:"#0d2914",color:C.newColor,border:"1px solid "+C.newColor,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap"}}>🆕 NEW</span>;
   if(status==="updated")return <span style={{background:"#0a1f29",color:C.updatedColor,border:"1px solid "+C.updatedColor,padding:"2px 7px",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap"}}>↻ UPDATED</span>;
@@ -310,7 +319,8 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
     return _yearPlus;
   };
 
-  const [collapsed,setCollapsed]=React.useState({});
+  const [collapsed,setCollapsed]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("mp-tl-collapse-v1"))||{};}catch(e){return {};}});
+  const toggleCollapse=(b)=>setCollapsed(c=>{const n={...c,[b]:!c[b]};try{localStorage.setItem("mp-tl-collapse-v1",JSON.stringify(n));}catch(e){}return n;});
   const grouped={};buckets.forEach(b=>grouped[b]=[]);
   projects.forEach(p=>grouped[assign(p)].push(p));
   // Within each window: pinned first, then priority, then capacity — so your BD focus floats up
@@ -340,9 +350,9 @@ function TimelineView({projects,onSelect,selected,onPinToggle}){
         <div style={{position:"absolute",left:"130px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, #ff5555, "+C.yellow+", #222)"}}/>
         {active.map((bucket,bi)=>(
           <div key={bucket} style={{display:"flex",marginBottom:"20px"}}>
-            <div onClick={()=>setCollapsed(c=>({...c,[bucket]:!c[bucket]}))} style={{width:"131px",minWidth:"131px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative",cursor:"pointer",userSelect:"none"}} title={collapsed[bucket]?"Expand":"Collapse"}>
+            <div onClick={()=>toggleCollapse(bucket)} style={{width:"131px",minWidth:"131px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative",cursor:"pointer",userSelect:"none"}} title={collapsed[bucket]?"Expand":"Collapse"}>
               <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"11px",color:bucketColor(bucket,bi),textTransform:"uppercase",lineHeight:1.3}}>{bucket} {collapsed[bucket]?"▸":""}</div>
-              <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#333",marginTop:"3px"}}>{grouped[bucket].length} project{grouped[bucket].length!==1?"s":""}</div>
+              <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#666",marginTop:"3px"}}>{grouped[bucket].length} project{grouped[bucket].length!==1?"s":""}</div>
               <div style={{position:"absolute",right:"-7px",top:"15px",width:"12px",height:"12px",borderRadius:"50%",background:bucket.startsWith("🚨")?"#ff5555":bi===0?C.yellow:C.border,border:bi===0?"none":"2px solid "+C.muted,zIndex:1}}/>
             </div>
             <div style={{flex:1,paddingLeft:"24px",display:"flex",flexDirection:"column",gap:"8px"}}>
@@ -433,7 +443,7 @@ function BDRow({project:p,saved,sug,onSaveRow,onUpdateSug,onSelect}){
               <div style={{color:"#fff",fontSize:"11px",fontWeight:"bold",fontFamily:"Arial,sans-serif",marginBottom:g.people.some(x=>x.name)?"3px":"0"}}>{g.company}</div>
               {g.people.map(c=>(
                 <div key={c._i} style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"2px"}}>
-                  <span style={{color:BD_TYPE_COLORS[c.type]||"#aaa",fontSize:"8px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px"}}>{c.type}</span>
+                  <span style={{color:BD_TYPE_COLORS[c.type]||"#aaa",fontSize:"9px",fontWeight:"bold",fontFamily:"Arial,sans-serif",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px"}}>{c.type}</span>
                   <span style={{color:"#bbb",fontSize:"11px",fontFamily:"Arial,sans-serif",flex:1,lineHeight:1.4}}>{c.name||<span style={{color:"#555"}}>—</span>}</span>
                   <button onClick={()=>removeContact(c._i)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:"14px",padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>
                 </div>
@@ -460,14 +470,14 @@ function BDRow({project:p,saved,sug,onSaveRow,onUpdateSug,onSelect}){
           <div style={{marginTop:"10px",border:"1px dashed #7a5a1e",background:"rgba(240,170,40,0.06)"}}>
             <div onClick={()=>setSugOpen(!sugOpen)} style={{display:"flex",alignItems:"center",gap:"6px",padding:"6px 8px",cursor:"pointer",color:"#e0b45a",fontSize:"10px",fontWeight:"bold",fontFamily:"Arial,sans-serif"}}>
               <span>SUGGESTED CONTACTS ({sug.length})</span>
-              <span style={{fontSize:"8px",color:"#9a7a3a",border:"1px solid #6a4a15",padding:"1px 5px",fontWeight:"normal"}}>unverified</span>
+              <span style={{fontSize:"9px",color:"#9a7a3a",border:"1px solid #6a4a15",padding:"1px 5px",fontWeight:"normal"}}>unverified</span>
               <span style={{marginLeft:"auto",fontSize:"9px"}}>{sugOpen?"▲":"▼"}</span>
             </div>
             {sugOpen&&sug.map((s,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:"5px",flexWrap:"wrap",padding:"5px 8px",borderTop:"1px solid #2a2010"}}>
-                <span style={{color:BD_TYPE_COLORS[s.type]||"#aaa",fontSize:"8px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px",fontFamily:"Arial,sans-serif"}}>{s.type}</span>
+                <span style={{color:BD_TYPE_COLORS[s.type]||"#aaa",fontSize:"9px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",minWidth:"58px",fontFamily:"Arial,sans-serif"}}>{s.type}</span>
                 <span style={{color:"#ccc",fontSize:"11px",fontFamily:"Arial,sans-serif",flex:1,minWidth:"110px",lineHeight:1.4}}><span style={{color:"#fff",fontWeight:"bold"}}>{s.company||"(company)"}</span>{(s.name||s.role)?<span style={{color:"#bbb",display:"block",marginTop:"1px"}}>{s.name||""}{s.name&&s.role?" — ":""}{s.role||""}</span>:null}</span>
-                {s.conf?<span style={{fontSize:"8px",color:s.conf==="high"?"#4ea865":(s.conf==="med"?"#e0902a":"#c56b6b"),border:"1px solid #444",padding:"1px 4px"}}>{s.conf}</span>:null}
+                {s.conf?<span style={{fontSize:"9px",color:s.conf==="high"?"#4ea865":(s.conf==="med"?"#e0902a":"#c56b6b"),border:"1px solid #444",padding:"1px 4px"}}>{s.conf}</span>:null}
                 {s.src?<a href={s.src.indexOf("http")===0?s.src:"https://"+s.src} target="_blank" rel="noopener" style={{color:"#5a9bd8",fontSize:"9px"}}>src</a>:null}
                 <button onClick={()=>acceptSug(s,i)} title="Add to contacts" style={{background:"rgba(78,168,101,0.15)",border:"1px solid #2f5c3c",color:"#7bd196",fontSize:"10px",padding:"2px 7px",cursor:"pointer",fontFamily:"Arial,sans-serif",flexShrink:0}}>✓ Add</button>
                 <button onClick={()=>dismissSug(i)} title="Dismiss" style={{background:"none",border:"1px solid #4a3030",color:"#c98a8a",fontSize:"10px",padding:"2px 7px",cursor:"pointer",fontFamily:"Arial,sans-serif",flexShrink:0}}>✕</button>
@@ -481,9 +491,10 @@ function BDRow({project:p,saved,sug,onSaveRow,onUpdateSug,onSelect}){
     </tr>
   );
 }
-function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSelect,searchQuery}){
+function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSelect,searchQuery,onExportBackup,onRestoreBackup,restoreN}){
   const [importMsg,setImportMsg]=React.useState("");
   function handleImportFile(e){const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=function(){try{const obj=JSON.parse(rd.result);const n=onImportSug(obj);setImportMsg("Imported "+n+" new suggestion"+(n===1?"":"s"));}catch(err){setImportMsg("Import failed — not valid JSON");}};rd.readAsText(f);e.target.value="";}
+  function handleRestoreFile(e){const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=function(){try{const obj=JSON.parse(rd.result);const n=onRestoreBackup(obj);setImportMsg(n?"Backup restored ("+n+" data set"+(n===1?"":"s")+")":"Restore failed — not a dashboard backup file");}catch(err){setImportMsg("Restore failed — not valid JSON");}};rd.readAsText(f);e.target.value="";}
   const [sKey,setSKey]=React.useState("proc");
   const [sDir,setSDir]=React.useState("asc");
   function clickSort(k){if(sKey===k)setSDir(d=>d==="asc"?"desc":"asc");else{setSKey(k);setSDir("asc");}}
@@ -506,7 +517,10 @@ function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSel
       </div>
       <div style={{marginBottom:"14px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
         <label style={{background:"#1a1a1a",color:C.yellow,border:"1px solid "+C.yellow,padding:"5px 12px",fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",cursor:"pointer"}}>Import suggestions<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={handleImportFile}/></label>
-        <span style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#888"}}>load this week\u2019s suggested_contacts.json into the drawer</span>
+        <span style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#888"}}>load this week’s suggested_contacts.json into the drawer</span>
+        <span style={{width:"1px",height:"18px",background:"#2a2a2a"}}/>
+        <button onClick={onExportBackup} title="Downloads pins, overrides, contacts, BD notes & suggestions as a JSON file — keep it safe, this data lives only in this browser" style={{background:"#0d2914",color:"#4ADE80",border:"1px solid #2f5c3c",padding:"5px 12px",fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",cursor:"pointer"}}>⬇ Export backup</button>
+        <label title="Restores a previously exported backup file (overwrites current pins, overrides & BD notes)" style={{background:"#1a1a1a",color:"#bbb",border:"1px solid #333",padding:"5px 12px",fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",cursor:"pointer"}}>⬆ Restore backup<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={handleRestoreFile}/></label>
         {importMsg?<span style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#4ADE80"}}>{importMsg}</span>:null}
       </div>
       {projects.length===0&&<div style={{padding:"60px 20px",textAlign:"center",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>No pinned projects yet — click 📌 on any row in the <span style={{color:C.yellow,fontWeight:"bold"}}>PROJECT TABLE</span> to add it here.</div>}
@@ -521,7 +535,7 @@ function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSel
             <TH w="230px" k="next">Next Steps</TH>
           </tr></thead>
           <tbody>
-            {sorted.map(p=><BDRow key={p.projectName} project={p} saved={bdOf(p)} sug={sugData[(p.projectName||"").toLowerCase()]||[]} onSaveRow={onSaveRow} onUpdateSug={onUpdateSug} onSelect={onSelect}/>)}
+            {sorted.map(p=><BDRow key={p.projectName+"|"+(restoreN||0)} project={p} saved={bdOf(p)} sug={sugData[(p.projectName||"").toLowerCase()]||[]} onSaveRow={onSaveRow} onUpdateSug={onUpdateSug} onSelect={onSelect}/>)}
           </tbody>
         </table>
       </div>}
@@ -542,6 +556,7 @@ function App(){
   const [fStatus,setFStatus]=useState([]);
   const [fChange,setFChange]=useState("All");
   const [fHideStale,setFHideStale]=useState(true);
+  const [fLowConf,setFLowConf]=useState(false);
   const [fAssets,setFAssets]=useState([]);
   const [fProcStart,setFProcStart]=useState([]);
   const [statusOpen,setStatusOpen]=useState(false);
@@ -588,6 +603,15 @@ function App(){
       setLoading(false);
     })();
   },[]);
+  // Close filter dropdowns when clicking anywhere outside them
+  useEffect(()=>{
+    function onDocDown(e){
+      if(e.target.closest&&e.target.closest('[data-dd]'))return;
+      setStatusOpen(false);setAssetsOpen(false);setProcStartOpen(false);
+    }
+    document.addEventListener("mousedown",onDocDown);
+    return ()=>document.removeEventListener("mousedown",onDocDown);
+  },[]);
   function savePins(np){setPins(np);try{localStorage.setItem(PIN_KEY,JSON.stringify(np));}catch(e){}}
   function pinToggle(p){const k=(p.projectName||"").toLowerCase();const np={...pins};if(np[k])delete np[k];else np[k]=true;savePins(np);}
   function saveOverrides(no){setOverrides(no);try{localStorage.setItem(OVERRIDE_KEY,JSON.stringify(no));}catch(e){}}
@@ -598,6 +622,45 @@ function App(){
   function updateSug(projectName,arr){const k=(projectName||"").toLowerCase();const no={...sugData};if(arr&&arr.length)no[k]=arr;else delete no[k];setSugData(no);try{localStorage.setItem(SUG_KEY,JSON.stringify(no));}catch(e){}}
   function importSug(obj){const no={...sugData};let added=0;Object.keys(obj||{}).forEach(function(kk){const key=(kk||"").toLowerCase();const inc=Array.isArray(obj[kk])?obj[kk]:[];const cur=no[key]?no[key].slice():[];inc.forEach(function(c){if(!c||(!c.name&&!c.company))return;var dup=cur.some(function(x){return (x.name||"").toLowerCase()===(c.name||"").toLowerCase()&&(x.company||"").toLowerCase()===(c.company||"").toLowerCase();});if(!dup){cur.push(c);added++;}});if(cur.length)no[key]=cur;});setSugData(no);try{localStorage.setItem(SUG_KEY,JSON.stringify(no));}catch(e){}return added;}
   function clearStatusOverride(projectName){const k=(projectName||"").toLowerCase();const no={...overrides};delete no[k];saveOverrides(no);}
+  const [restoreN,setRestoreN]=useState(0);
+  function exportBackup(){
+    const data={version:1,exported:new Date().toISOString(),pins,overrides,bdData,sugData};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="mp-dashboard-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  }
+  function restoreBackup(obj){
+    if(!obj||typeof obj!=="object")return 0;
+    let n=0;
+    const put=(key,val,setter)=>{if(val&&typeof val==="object"){setter(val);try{localStorage.setItem(key,JSON.stringify(val));}catch(e){}n++;}};
+    put(PIN_KEY,obj.pins,setPins);
+    put(OVERRIDE_KEY,obj.overrides,setOverrides);
+    put(BD_KEY,obj.bdData,setBdData);
+    put(SUG_KEY,obj.sugData,setSugData);
+    if(n)setRestoreN(x=>x+1); // remount BD rows so restored notes appear
+    return n;
+  }
+  function exportCSV(rows){
+    const esc=v=>{const s=Array.isArray(v)?v.filter(Boolean).join("; "):String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+    const cols=[
+      ["Project",p=>p.projectName],["Country",p=>p.country],["Location",p=>p.location],
+      ["Equip. Procurement",p=>p.procurementStart||"TBD"],["Status",p=>p.procurementStatus],
+      ["Priority",p=>p.priority],["Capacity MW",p=>p.capacityMW||""],["Project Value",p=>p.projectValue||""],
+      ["Asset Types",p=>p.assetTypes],["Owner/Developer",p=>p.owner],["EPC/Tenderer",p=>p.epcContractor],
+      ["Financiers",p=>p.financiers||p.fundingSources],["Engagement Window",p=>p.mpEngagementWindow],
+      ["Pinned",p=>p._pinned?"yes":""],["Change",p=>p._changeStatus||""],["Confidence",p=>p.statusConfidence||""],
+    ];
+    const lines=[cols.map(c=>esc(c[0])).join(",")].concat(rows.map(p=>cols.map(c=>esc(c[1](p))).join(",")));
+    const blob=new Blob([String.fromCharCode(0xFEFF)+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}); // BOM so Excel opens UTF-8 correctly
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="mp-projects-"+new Date().toISOString().slice(0,10)+".csv";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  }
   const isPinned=(p)=>!!pins[(p.projectName||"").toLowerCase()];
   const order={High:0,Medium:1,Low:2};
   const withPins=projects.map(p=>{
@@ -611,6 +674,7 @@ function App(){
     .filter(p=>fChange==="All"||p._changeStatus===(fChange==="New"?"new":"updated"))
     .filter(p=>fAssets.length===0||fAssets.some(k=>ASSET_FILTERS[k](p)))
     .filter(p=>fProcStart.length===0||fProcStart.includes(p.procurementStart))
+    .filter(p=>!fLowConf||p.statusConfidence==="low")
     .filter(p=>!fHideStale||!isStale(p))
     .sort((a,b)=>{
       if(sortKey==="priority"){
@@ -644,8 +708,8 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFAssets([]);setFProcStart([]);setFHideStale(true);}
-  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fAssets.length>0||fProcStart.length>0;
+  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFAssets([]);setFProcStart([]);setFHideStale(true);setFLowConf(false);}
+  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fAssets.length>0||fProcStart.length>0||fLowConf;
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
   const fmt=iso=>{
@@ -702,8 +766,8 @@ function App(){
           {dcCount>0&&<StatCard value={"🖥 "+dcCount} label="Data Centres" color="#7cc4ff" active={fAssets.includes("Data Centre")} onClick={()=>setFAssets(cur=>cur.includes("Data Centre")?cur.filter(x=>x!=="Data Centre"):[...cur,"Data Centre"])}/>}
           {txCount>0&&<StatCard value={"⚡ "+txCount} label="Transmission" color="#ff9940" active={fAssets.includes("HV Transmission")} onClick={()=>setFAssets(cur=>cur.includes("HV Transmission")?cur.filter(x=>x!=="HV Transmission"):[...cur,"HV Transmission"])}/>}
           {anyFilter&&<StatCard value={"🔎 "+displayed.length} label="Matching Filters" color="#4ADE80"/>}
-          {(newCount>0||updCount>0)&&<><StatCard value={"🆕 "+newCount} label="New This Scan" color={C.newColor}/><StatCard value={"↻ "+updCount} label="Updated This Scan" color={C.updatedColor}/></>}
-          {lowConfCount>0&&<StatCard value={"⚠ "+lowConfCount} label="Low Confidence" color="#ff5555"/>}
+          {(newCount>0||updCount>0)&&<><StatCard value={"🆕 "+newCount} label="New This Scan" color={C.newColor} active={fChange==="New"} onClick={()=>setFChange(c=>c==="New"?"All":"New")}/><StatCard value={"↻ "+updCount} label="Updated This Scan" color={C.updatedColor} active={fChange==="Updated"} onClick={()=>setFChange(c=>c==="Updated"?"All":"Updated")}/></>}
+          {lowConfCount>0&&<StatCard value={"⚠ "+lowConfCount} label="Low Confidence" color="#ff5555" active={fLowConf} onClick={()=>setFLowConf(v=>!v)}/>}
           {overrideCount>0&&<StatCard value={"✎ "+overrideCount} label="User Overrides" color="#cc77ff"/>}
         </div>
       )}
@@ -712,7 +776,7 @@ function App(){
           <div style={{display:"flex"}}>
             {[{key:"table",label:"PROJECT TABLE"},{key:"timeline",label:"ENGAGEMENT TIMELINE"},{key:"bd",label:"BD STRATEGY"},{key:"detail",label:"SELECTED PROJECT"}].map(t=>(
               <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#444":"#bbb",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
-                {t.label}{t.key==="detail"&&selected&&<span style={{background:C.yellow,color:C.black,fontSize:"8px",padding:"1px 5px",borderRadius:"2px"}}>1</span>}
+                {t.label}{t.key==="detail"&&selected&&<span style={{background:C.yellow,color:C.black,fontSize:"9px",padding:"1px 5px",borderRadius:"2px"}}>1</span>}
               </button>
             ))}
           </div>
@@ -729,7 +793,7 @@ function App(){
                 {f.opts.map(o=><option key={o} value={o}>{o==="All"?f.ph:o.toUpperCase()}</option>)}
               </select>
             ))}
-            <div style={{position:"relative"}}>
+            <div data-dd="1" style={{position:"relative"}}>
               <button onClick={()=>setStatusOpen(o=>!o)} style={{background:fStatus.length?C.yellow:"#0d0d0d",color:fStatus.length?C.black:"#bbb",border:"1px solid "+(fStatus.length?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fStatus.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
                 {fStatus.length?"STATUS ("+fStatus.length+")":"ALL STATUSES"} ▾
               </button>
@@ -744,7 +808,7 @@ function App(){
                 </div>
               )}
             </div>
-            <div style={{position:"relative"}}>
+            <div data-dd="1" style={{position:"relative"}}>
               <button onClick={()=>setAssetsOpen(o=>!o)} style={{background:fAssets.length?"#7cc4ff":"#0d0d0d",color:fAssets.length?C.black:"#bbb",border:"1px solid "+(fAssets.length?"#7cc4ff":C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fAssets.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
                 {fAssets.length?"ASSET TYPES ("+fAssets.length+")":"ALL ASSET TYPES"} ▾
               </button>
@@ -760,7 +824,7 @@ function App(){
                 </div>
               )}
             </div>
-            <div style={{position:"relative"}}>
+            <div data-dd="1" style={{position:"relative"}}>
               <button onClick={()=>setProcStartOpen(o=>!o)} style={{background:fProcStart.length?C.yellow:"#0d0d0d",color:fProcStart.length?C.black:"#bbb",border:"1px solid "+(fProcStart.length?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fProcStart.length?"bold":"normal",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>
                 {fProcStart.length?"PROC. DATE ("+fProcStart.length+")":"ALL PROC. DATES"} ▾
               </button>
@@ -775,7 +839,7 @@ function App(){
                 </div>
               )}
             </div>
-            <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#bbb":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Hides: Under Construction with procurement >12 months ago; Planning/Pre-tender with procurement date passed >3 months ago">{fHideStale?"🚧 SHOW STALE":"🚧 HIDE STALE"}</button>
+            <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#bbb":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Hides: Cancelled projects, and Under Construction where equipment procurement started more than 6 months ago. Planning & Pre-tender are never hidden.">{fHideStale?"🚧 SHOW STALE":"🚧 HIDE STALE"}</button>
             {anyFilter&&<button onClick={resetFilters} style={{background:"none",border:"1px solid #333",color:"#999",padding:"6px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>✕ RESET FILTERS</button>}
           </div>
         </div>
@@ -783,7 +847,7 @@ function App(){
       {!loading&&!error&&(
         <div style={{padding:"24px 28px"}}>
           {withPins.length===0?(
-            <div style={{textAlign:"center",padding:"100px 20px",color:"#2a2a2a",fontFamily:"Arial,sans-serif"}}>No project data found yet.</div>
+            <div style={{textAlign:"center",padding:"100px 20px",color:"#666",fontFamily:"Arial,sans-serif"}}>No project data found yet.</div>
           ):tab==="table"?(
             <div>
               <div style={{color:"#888",fontFamily:"Arial,sans-serif",fontSize:"11px",marginBottom:"12px",display:"flex",gap:"16px",flexWrap:"wrap"}}>
@@ -794,6 +858,7 @@ function App(){
                 <span style={{color:"#cc77ff"}}>✎ overridden</span>
                 <span><span style={{display:"inline-block",width:"7px",height:"7px",borderRadius:"50%",background:"#4ADE80",verticalAlign:"middle"}}></span> high conf</span>
                 <span><span style={{display:"inline-block",width:"7px",height:"7px",borderRadius:"50%",background:"#ff5555",verticalAlign:"middle"}}></span> low conf — verify</span>
+                <button onClick={()=>exportCSV(displayed)} title="Download the currently filtered rows as CSV (opens in Excel)" style={{marginLeft:"auto",background:"#1a1a1a",color:C.yellow,border:"1px solid "+C.yellow,padding:"4px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:"bold",cursor:"pointer",textTransform:"uppercase",letterSpacing:"0.5px"}}>⬇ Export CSV ({displayed.length})</button>
               </div>
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",minWidth:"980px",tableLayout:"fixed"}}>
@@ -837,13 +902,13 @@ function App(){
           ):tab==="timeline"?(
             <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
           ):tab==="bd"?(
-            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} sugData={sugData} onSaveRow={saveBDRow} onUpdateSug={updateSug} onImportSug={importSug} onSelect={openProject} searchQuery={fSearch}/>
+            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} sugData={sugData} onSaveRow={saveBDRow} onUpdateSug={updateSug} onImportSug={importSug} onSelect={openProject} searchQuery={fSearch} onExportBackup={exportBackup} onRestoreBackup={restoreBackup} restoreN={restoreN}/>
           ):(
             selected?<DetailPanel project={{...selected,...withPins.find(p=>p.projectName===selected.projectName)||{}}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride} onSetEpc={setEpcOverride}/>:(
               <div style={{textAlign:"center",padding:"100px 20px"}}>
                 <div style={{fontSize:"48px",opacity:0.08,marginBottom:"16px"}}>👆</div>
-                <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"14px",color:"#1e1e1e",textTransform:"uppercase",letterSpacing:"3px"}}>NO PROJECT SELECTED</div>
-                <div style={{fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#2a2a2a",marginTop:"10px"}}>Click any project in the <strong style={{color:C.yellow}}>PROJECT TABLE</strong> or <strong style={{color:C.yellow}}>TIMELINE</strong> to view its details here.</div>
+                <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"14px",color:"#555",textTransform:"uppercase",letterSpacing:"3px"}}>NO PROJECT SELECTED</div>
+                <div style={{fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#777",marginTop:"10px"}}>Click any project in the <strong style={{color:C.yellow}}>PROJECT TABLE</strong> or <strong style={{color:C.yellow}}>TIMELINE</strong> to view its details here.</div>
               </div>
             )
           )}
@@ -856,7 +921,22 @@ function App(){
     </div>
   );
 }
-ReactDOM.createRoot(document.getElementById("mp-root")).render(<App/>);
+class ErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={err:null};}
+  static getDerivedStateFromError(err){return {err};}
+  render(){
+    if(this.state.err){
+      return <div style={{background:"#000",minHeight:"100vh",color:"#e05050",fontFamily:"'Courier New',monospace",fontSize:"13px",padding:"60px 28px"}}>
+        <div style={{fontWeight:"bold",marginBottom:"10px"}}>⚠ Dashboard hit an unexpected error and stopped rendering.</div>
+        <div style={{color:"#888",marginBottom:"16px"}}>Usually caused by a malformed record in projects.json / projects-prev.json. Details:</div>
+        <pre style={{color:"#aaa",whiteSpace:"pre-wrap"}}>{String(this.state.err&&(this.state.err.message||this.state.err))}</pre>
+        <button onClick={()=>location.reload()} style={{marginTop:"16px",background:"#FDB422",color:"#000",border:"none",padding:"8px 16px",fontWeight:"bold",cursor:"pointer"}}>RELOAD</button>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+ReactDOM.createRoot(document.getElementById("mp-root")).render(<ErrorBoundary><App/></ErrorBoundary>);
 </script>
 </body>
 </html>
