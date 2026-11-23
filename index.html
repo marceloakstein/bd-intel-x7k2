@@ -7,7 +7,9 @@
 </head>
 <body style="margin:0;padding:0;background:#000;">
 <!--
-  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v3 2026-07-13)
+  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v4 2026-11-23)
+  v4: Dashboard home tab, MP relevance score + MP Focus filter, dedupe of scan duplicates,
+  pins/contacts migrated to canonical names, Engagement Timeline + BD Status/Next Steps removed.
   Read-only. Fetches projects.json + projects-prev.json from the SAME repo (same origin, no auth).
   Features: HV + Data Centre badges, multi-select status, reset filters, change highlighting,
   single left pin (per-viewer localStorage), Selected Project tab.
@@ -97,11 +99,71 @@ function hasDateStatusMismatch(p){
   if(!d)return false;
   return d<new Date();
 }
+// ---- Round 1 (2026-11-23): stable keys, dedupe, MP relevance score ----
+// Stable key: tolerant to "Project" suffix, "&"/"and", punctuation/spacing and a trailing
+// acronym that just repeats the name ("... Storage System (BESS)"). Keeps lots/states distinct.
+function keyOf(name){
+  let s=String(name||"");
+  s=s.replace(/^(.*?)\s*\(([A-Za-z]{2,6})\)\s*$/,(all,pre,acr)=>pre.split(/[\s\-–]+/).filter(Boolean).map(w=>w[0]).join("").toLowerCase().endsWith(acr.toLowerCase())?pre:all);
+  return s.toLowerCase().replace(/&/g," and ").replace(/\bproject\b/g," ").replace(/[^a-z0-9à-ÿ]+/g,"");
+}
+// Old saved names that the scan later renamed (pins / contacts keyed by name).
+const KEY_ALIASES={"vni west (western renewables link)":"transgrid vni west / keranglink"};
+function richness(p){return Object.values(p).filter(v=>Array.isArray(v)?v.length:(v!==null&&v!==undefined&&String(v).trim()!==""&&v!=="TBD")).length+(p.statusConfidence==="high"?2:0);}
+function dedupeProjects(list){
+  const by=new Map();
+  (list||[]).filter(p=>p&&p.projectName).forEach(p=>{
+    const k=keyOf(p.projectName);const cur=by.get(k);
+    if(!cur){by.set(k,{...p,_dupNames:[]});return;}
+    const keep=richness(p)>richness(cur)?{...p,_dupNames:[...cur._dupNames,cur.projectName]}:{...cur,_dupNames:[...cur._dupNames,p.projectName]};
+    by.set(k,keep);
+  });
+  return [...by.values()];
+}
+function isTxOrSub(p){return assetHay(p,/transmission|interconnector|hvdc|substation|switchyard/);}
+function monthsFromNow(d){const n=new Date();return (d.getFullYear()-n.getFullYear())*12+(d.getMonth()-n.getMonth());}
+// 0–100. Asset fit (40) + procurement window (35) + status (20) − low-confidence penalty.
+function mpScore(p){
+  let s=(isTxOrSub(p)||isDataCentre(p))?40:hasHVEquipment(p)?30:10;
+  const d=parseProcurementDate(p.procurementStart);
+  if(!d)s+=8;else{const m=monthsFromNow(d);s+=m<-12?0:m<-6?10:m<=6?35:m<=12?28:m<=18?18:8;}
+  s+=({"Tender Active":20,"Pre-tender":18,"Awarded":16,"Planning":8,"Under Construction":6,"Cancelled":-100})[p.procurementStatus]??5;
+  if(p.statusConfidence==="low")s-=10;
+  return Math.max(0,Math.min(100,s));
+}
+const FOCUS_MIN=80;
+function tierOf(score){return score>=FOCUS_MIN?"High":score>=60?"Medium":"Low";}
+// Engagement window bucket from the equipment procurement date (dashboard chart).
+function windowBucket(p){
+  const d=parseProcurementDate(p.procurementStart);
+  if(!d)return "TBD";
+  const m=monthsFromNow(d);
+  if(m<=0)return "Now";
+  if(m<=6)return "0–6 m";
+  if(m<=12)return "6–12 m";
+  if(m<=24)return "12–24 m";
+  return "24 m+";
+}
+const WINDOW_BUCKETS=["Now","0–6 m","6–12 m","12–24 m","24 m+","TBD"];
+// Re-key a {lowercaseName: value} store onto the canonical (deduped) project names.
+function remapStore(obj,canonByKey,merge){
+  const out={},orphans=[];let changed=false;
+  Object.keys(obj||{}).forEach(k=>{
+    const alias=KEY_ALIASES[k];
+    let target=canonByKey.get(keyOf(alias||k));
+    if(!target){const kk=keyOf(k);for(const [ck,cn] of canonByKey){if(ck.length>=15&&(kk.startsWith(ck)||ck.startsWith(kk))){target=cn;break;}}}
+    const nk=target||k;
+    if(!target)orphans.push(k);
+    if(nk!==k)changed=true;
+    out[nk]=out[nk]===undefined?obj[k]:merge(out[nk],obj[k]);
+  });
+  return {out,orphans,changed};
+}
 function computeChangeStatus(cur, prev){
-  const prevMap=new Map((prev||[]).filter(p=>p&&p.projectName).map(p=>[String(p.projectName).toLowerCase(),p]));
-  const watch=["procurementStatus","procurementStart","priority","capacityMW","mpEngagementWindow","projectValue"];
+  const prevMap=new Map((prev||[]).filter(p=>p&&p.projectName).map(p=>[keyOf(p.projectName),p]));
+  const watch=["procurementStatus","procurementStart","capacityMW","mpEngagementWindow","projectValue"];
   return cur.map(p=>{
-    const pr=prevMap.get((p.projectName||"").toLowerCase());
+    const pr=prevMap.get(keyOf(p.projectName));
     if(!pr) return {...p,_changeStatus:"new",_changedFields:[]};
     const cf=watch.filter(f=>String(p[f]??"")!==String(pr[f]??""));
     return {...p,_changeStatus:cf.length?"updated":null,_changedFields:cf};
@@ -287,102 +349,114 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
     </div>
   );
 }
-function TimelineView({projects,onSelect,selected,onPinToggle}){
-  // Dynamic buckets based on current date
-  const _now=new Date();
-  const _cy=_now.getFullYear();
-  const _ch=_now.getMonth()<6?1:2;
-  const _hLabel=(y,h)=>`H${h} ${y}`;
-  const _nextH=(y,h)=>h===1?{y,h:2}:{y:y+1,h:1};
-  // Build bucket list: Act Now + 4 future halves + year+ + TBD
-  const _actNow=`🚨 Act Now (Window ≤H${_ch} ${_cy})`;
-  const _futureBuckets=[];
-  let _cur=_nextH(_cy,_ch);
-  for(let i=0;i<4;i++){_futureBuckets.push(_hLabel(_cur.y,_cur.h));_cur=_nextH(_cur.y,_cur.h);}
-  const _yearPlus=`${_cur.y}+`;
-  const buckets=[_actNow,..._futureBuckets,_yearPlus,"TBD"];
-
-  function parseH(str){
-    const m=(str||"").match(/H([12])\s*(\d{4})/i);
-    return m?{h:+m[1],year:+m[2]}:null;
-  }
-
-  const assign=(p)=>{
-    const ps=(p.procurementStart||"").trim();
-    if(!ps||ps==="TBD"||ps==="")return"TBD";
-    const d=parseProcurementDate(ps);
-    if(!d)return"TBD";
-    const ey=d.getFullYear();
-    const eh=d.getMonth()<6?1:2;
-    if(ey<_cy||(ey===_cy&&eh<=_ch))return _actNow;
-    for(const b of _futureBuckets){const p2=parseH(b);if(p2&&ey===p2.year&&eh===p2.h)return b;}
-    return _yearPlus;
-  };
-
-  const [collapsed,setCollapsed]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("mp-tl-collapse-v1"))||{};}catch(e){return {};}});
-  const toggleCollapse=(b)=>setCollapsed(c=>{const n={...c,[b]:!c[b]};try{localStorage.setItem("mp-tl-collapse-v1",JSON.stringify(n));}catch(e){}return n;});
-  const grouped={};buckets.forEach(b=>grouped[b]=[]);
-  projects.forEach(p=>grouped[assign(p)].push(p));
-  // Within each window: pinned first, then priority, then capacity — so your BD focus floats up
-  const prioOrd={High:0,Medium:1,Low:2};
-  Object.keys(grouped).forEach(b=>grouped[b].sort((a,x)=>{
-    if(!!a._pinned!==!!x._pinned)return a._pinned?-1:1;
-    const pa=prioOrd[a.priority]??2,px=prioOrd[x.priority]??2;
-    if(pa!==px)return pa-px;
-    return (Number(x.capacityMW)||0)-(Number(a.capacityMW)||0);
-  }));
-  const active=buckets.filter(b=>grouped[b].length>0);
-  const bc=(p)=>p._pinned?C.pinActive:p._changeStatus==="new"?C.newColor:p._changeStatus==="updated"?C.updatedColor:p.priority==="High"?C.yellow:p.priority==="Medium"?"#444":"#222";
-
-  const bucketColor=(bucket,bi)=>{
-    if(bucket.startsWith("🚨"))return"#ff5555";
-    if(bi===0)return C.yellow;
-    return"#777";
-  };
-
-  return (
-    <div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:C.muted,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"6px"}}>{`MADEPARTNERS ENGAGEMENT TIMELINE — GROUPED BY EQUIPMENT PROCUREMENT START DATE · TODAY H${_ch} ${_cy}`}</div>
-      <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"24px",paddingBottom:"12px",borderBottom:"1px solid "+C.border}}>
-        Showing <span style={{color:C.yellow,fontWeight:"bold"}}>{projects.length}</span> projects across <span style={{color:C.yellow,fontWeight:"bold"}}>{active.length}</span> windows · <span style={{color:"#ff5555",fontWeight:"bold"}}>{grouped[_actNow].length}</span> need action now · 📌 pinned float to the top of each window · click a window label to collapse it
+function ScoreBar({score}){
+  const s=Math.round(score||0);
+  return <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+    <span style={{color:s>=FOCUS_MIN?C.yellow:s>=60?"#ccc":"#777",fontWeight:"bold",fontSize:"12px",minWidth:"20px",fontVariantNumeric:"tabular-nums"}}>{s}</span>
+    <span style={{display:"inline-block",width:"28px",height:"4px",background:"#222",borderRadius:"2px",overflow:"hidden"}}><span style={{display:"block",height:"100%",width:s+"%",background:s>=FOCUS_MIN?C.yellow:s>=60?"#888":"#444"}}/></span>
+  </div>;
+}
+// Single-series horizontal bars (one hue = magnitude). Each row is clickable → drills into the table.
+function HBars({rows,onClick,max,unit}){
+  const m=max||Math.max(1,...rows.map(r=>r.value));
+  return <div style={{display:"flex",flexDirection:"column",gap:"2px"}}>
+    {rows.map(r=>(
+      <div key={r.label} onClick={onClick&&r.value?()=>onClick(r):undefined} title={r.label+": "+r.value+(unit?" "+unit:"")+(onClick&&r.value?" — click to open in table":"")} className="mp-hbar" style={{display:"grid",gridTemplateColumns:"96px 1fr 40px",alignItems:"center",gap:"10px",padding:"5px 6px",cursor:onClick&&r.value?"pointer":"default"}}>
+        <span style={{color:"#ccc",fontSize:"12px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.label}</span>
+        <span style={{height:"14px",background:"#161616",borderRadius:"0 4px 4px 0",position:"relative"}}><span style={{position:"absolute",left:0,top:0,bottom:0,width:(r.value/m*100)+"%",minWidth:r.value?"3px":0,background:r.color||C.yellow,borderRadius:"0 4px 4px 0"}}/></span>
+        <span style={{color:"#fff",fontSize:"12px",fontWeight:"bold",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{r.value}</span>
       </div>
-      <div style={{position:"relative"}}>
-        <div style={{position:"absolute",left:"130px",top:0,bottom:0,width:"2px",background:"linear-gradient(to bottom, #ff5555, "+C.yellow+", #222)"}}/>
-        {active.map((bucket,bi)=>(
-          <div key={bucket} style={{display:"flex",marginBottom:"20px"}}>
-            <div onClick={()=>toggleCollapse(bucket)} style={{width:"131px",minWidth:"131px",paddingRight:"16px",paddingTop:"14px",textAlign:"right",position:"relative",cursor:"pointer",userSelect:"none"}} title={collapsed[bucket]?"Expand":"Collapse"}>
-              <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"11px",color:bucketColor(bucket,bi),textTransform:"uppercase",lineHeight:1.3}}>{bucket} {collapsed[bucket]?"▸":""}</div>
-              <div style={{fontFamily:"Arial,sans-serif",fontSize:"10px",color:"#666",marginTop:"3px"}}>{grouped[bucket].length} project{grouped[bucket].length!==1?"s":""}</div>
-              <div style={{position:"absolute",right:"-7px",top:"15px",width:"12px",height:"12px",borderRadius:"50%",background:bucket.startsWith("🚨")?"#ff5555":bi===0?C.yellow:C.border,border:bi===0?"none":"2px solid "+C.muted,zIndex:1}}/>
-            </div>
-            <div style={{flex:1,paddingLeft:"24px",display:"flex",flexDirection:"column",gap:"8px"}}>
-              {(collapsed[bucket]?[]:grouped[bucket]).map((p,pi)=>(
-                <div key={pi} style={{position:"relative"}}>
-                  <div onClick={()=>onSelect(p)} style={{background:selected&&selected.projectName===p.projectName?"#1a1400":C.card,padding:"12px 16px",paddingRight:"44px",cursor:"pointer",border:selected&&selected.projectName===p.projectName?"1px solid "+C.yellow:"1px solid "+C.border,borderLeftWidth:"4px",borderLeftColor:bc(p)}}>
-                    <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px"}}>
-                      <div style={{flex:1}}>
-                        <div style={{color:C.white,fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"13px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-                          <button onClick={e=>{e.stopPropagation();onPinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{background:"none",border:"none",color:p._pinned?C.pinActive:"#777",opacity:p._pinned?1:0.55,fontSize:"13px",cursor:"pointer",padding:0,lineHeight:1,filter:p._pinned?"drop-shadow(0 0 3px "+C.pinActive+")":"none"}}>📌</button>
-                          <Flag country={p.country}/> {p.projectName}
-                          {isDataCentre(p)&&<DCBadge/>}
-                          <ChangeBadge status={p._changeStatus}/>
-                        </div>
-                        <div style={{color:"#666",fontFamily:"Arial,sans-serif",fontSize:"11px",marginTop:"3px"}}>{p.location}{p.capacityMW?" · "+Number(p.capacityMW).toLocaleString()+" MW":""}{p.projectValue?" · "+p.projectValue:""}</div>
-                      </div>
-                      <div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"center"}}>
-                        <Badge text={p.priority} type="priority"/><Badge text={p.procurementStatus} type="status"/><ConfidenceDot confidence={p.statusConfidence}/>{p._overrideMeta&&<OverrideBadge/>}
-                      </div>
-                    </div>
-                    <div style={{marginTop:"10px",background:"#080800",borderLeft:"2px solid "+C.yellow,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"11px",color:C.yellow,fontWeight:"bold"}}>⚡ {p.mpEngagementWindow||"Review procurement timeline"}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+    ))}
+  </div>;
+}
+function Panel({title,sub,children,style,className}){
+  return <div className={className} style={{background:"#0b0b0b",border:"1px solid "+C.border,padding:"16px 18px",...style}}>
+    <div style={{color:"#fff",fontSize:"14px",fontWeight:"bold",marginBottom:sub?"2px":"12px"}}>{title}</div>
+    {sub&&<div style={{color:C.muted,fontSize:"11px",marginBottom:"12px"}}>{sub}</div>}
+    {children}
+  </div>;
+}
+function DashboardView({projects,onDrill,onSelect,orphanPins,onRemoveOrphan,bdData}){
+  const live=projects.filter(p=>!isStale(p));
+  const focus=live.filter(p=>p._score>=FOCUS_MIN);
+  const pinned=projects.filter(p=>p._pinned);
+  const changed=focus.filter(p=>p._changeStatus);
+  const noContacts=pinned.filter(p=>!((bdData[(p.projectName||"").toLowerCase()]||{}).contacts||[]).length);
+  // Needs attention: pinned projects (and top focus projects) with a reason to act.
+  const reasons=p=>{
+    const r=[];const b=windowBucket(p);
+    if(p._changeStatus==="new")r.push({t:"New this scan",c:C.newColor});
+    if(p._changeStatus==="updated")r.push({t:"Changed: "+(p._changedFields||[]).map(f=>({procurementStatus:"status",procurementStart:"proc. date",capacityMW:"MW",mpEngagementWindow:"window",projectValue:"value"}[f]||f)).join(", "),c:C.updatedColor});
+    if(b==="Now"||b==="0–6 m")r.push({t:b==="Now"?"Procurement window open":"Procurement ≤ 6 months",c:C.yellow});
+    if(hasDateStatusMismatch(p))r.push({t:"Date passed, status not moved — verify",c:"#ff9940"});
+    return r;
+  };
+  const attention=[...pinned,...focus.filter(p=>!p._pinned)]
+    .map(p=>({p,r:reasons(p)})).filter(x=>x.r.length)
+    .sort((a,b)=>(b.p._pinned-a.p._pinned)||(b.r.length-a.r.length)||(b.p._score-a.p._score)).slice(0,10);
+  const kpis=[
+    {v:focus.length,l:"MP Focus projects",s:"score ≥ "+FOCUS_MIN+" of "+live.length+" active",go:()=>onDrill({focus:true})},
+    {v:changed.length,l:"Focus: new / updated",s:"since the last weekly scan",go:()=>onDrill({focus:true,change:changed.some(p=>p._changeStatus==="new")?"New":"Updated"})},
+    {v:pinned.length,l:"Pinned",s:"your BD shortlist",go:null},
+    {v:noContacts.length,l:"Pinned without contacts",s:"open the Contacts tab",go:null},
+  ];
+  // Window chart uses every active project with an HV fit (not just Focus — Focus already implies a near window).
+  const fit=live.filter(p=>isTxOrSub(p)||isDataCentre(p)||hasHVEquipment(p));
+  const wRows=WINDOW_BUCKETS.map(b=>({label:b==="Now"?"Open now":b,value:fit.filter(p=>windowBucket(p)===b).length,bucket:b}));
+  const statuses=["Planning","Pre-tender","Tender Active","Awarded","Under Construction"];
+  const byCountry=c=>statuses.map(s=>({label:s,value:focus.filter(p=>p.country===c&&p.procurementStatus===s).length,status:s,country:c}));
+  const sMax=Math.max(1,...["Australia","Brazil"].flatMap(c=>byCountry(c).map(r=>r.value)));
+  const aRows=ASSET_KEYS.map(k=>({label:k,value:focus.filter(ASSET_FILTERS[k]).length,asset:k})).filter(r=>r.value).sort((a,b)=>b.value-a.value);
+  const topNew=focus.filter(p=>p._changeStatus==="new").sort((a,b)=>b._score-a._score).slice(0,5);
+  return <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
+    <style>{`.mp-hbar:hover{background:#151515}.mp-row:hover{background:#141414}.mp-kpi:hover{border-color:${C.yellow}!important}
+      .mp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px}
+      .mp-wide{grid-column:span 2}@media(max-width:760px){.mp-wide{grid-column:auto}}`}</style>
+    {orphanPins.length>0&&<div style={{border:"1px solid #ff9940",background:"#1a0e00",padding:"10px 14px",fontSize:"12px",color:"#ffb27a"}}>
+      <b>{orphanPins.length} pinned project{orphanPins.length>1?"s":""} no longer in the scan data</b> (renamed or removed). Search the table and re-pin, then remove the old pin:
+      {orphanPins.map(k=><span key={k} style={{display:"inline-flex",alignItems:"center",gap:"4px",margin:"4px 8px 0 0",color:"#ddd"}}>“{k}”<button onClick={()=>onRemoveOrphan(k)} title="Remove this stale pin" style={{background:"none",border:"1px solid #555",color:"#bbb",cursor:"pointer",fontSize:"10px",padding:"0 5px"}}>remove</button></span>)}
+    </div>}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:"16px"}}>
+      {kpis.map(k=><div key={k.l} className={k.go?"mp-kpi":undefined} onClick={k.go||undefined} style={{background:"#0b0b0b",border:"1px solid "+C.border,padding:"14px 16px",cursor:k.go?"pointer":"default"}}>
+        <div style={{fontSize:"30px",fontWeight:"bold",color:"#fff",lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{k.v}</div>
+        <div style={{color:C.yellow,fontSize:"12px",fontWeight:"bold",marginTop:"6px"}}>{k.l}</div>
+        <div style={{color:C.muted,fontSize:"11px",marginTop:"2px"}}>{k.s}</div>
+      </div>)}
     </div>
-  );
+    <div className="mp-grid">
+      <Panel title="Needs your attention" sub="Pinned first, then top MP Focus projects with a reason to act" className="mp-wide" style={{minWidth:0}}>
+        {attention.length===0&&<div style={{color:"#666",fontSize:"12px"}}>Nothing flagged this week.</div>}
+        {attention.map(({p,r})=><div key={p.projectName} className="mp-row" onClick={()=>onSelect(p)} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"10px",padding:"8px 6px",borderTop:"1px solid "+C.border,cursor:"pointer"}}>
+          <div style={{minWidth:0}}>
+            <div style={{color:"#fff",fontSize:"13px",fontWeight:"bold",display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}>{p._pinned&&<span title="Pinned" style={{color:C.pinActive}}>●</span>}<Flag country={p.country}/>{p.projectName}</div>
+            <div style={{display:"flex",gap:"10px",flexWrap:"wrap",marginTop:"3px"}}>{r.map(x=><span key={x.t} style={{fontSize:"11px",color:"#bbb"}}><span style={{display:"inline-block",width:"6px",height:"6px",borderRadius:"50%",background:x.c,marginRight:"5px",verticalAlign:"middle"}}/>{x.t}</span>)}</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:"10px"}}><span style={{color:"#888",fontSize:"11px",whiteSpace:"nowrap"}}>{p.procurementStart||"TBD"}</span><ScoreBar score={p._score}/></div>
+        </div>)}
+      </Panel>
+      <Panel title="Engagement window" sub={"All "+fit.length+" active projects with HV / substation / data-centre scope, by equipment procurement start · click a bar"}>
+        <HBars rows={wRows} onClick={r=>onDrill({focus:false,bucket:r.bucket})}/>
+      </Panel>
+      <Panel title="Asset mix" sub="MP Focus projects · a project can count in several types">
+        <HBars rows={aRows} onClick={r=>onDrill({focus:true,asset:r.asset})}/>
+      </Panel>
+      <Panel title="Status by country" sub="MP Focus projects · same scale on both sides">
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:"14px"}}>
+          {["Australia","Brazil"].map(c=><div key={c}>
+            <div style={{color:"#ccc",fontSize:"12px",fontWeight:"bold",marginBottom:"4px"}}><Flag country={c}/> {c}</div>
+            <HBars rows={byCountry(c)} max={sMax} onClick={r=>onDrill({focus:true,status:r.status,country:r.country})}/>
+          </div>)}
+        </div>
+      </Panel>
+      <Panel title="Top new this scan" sub="Highest-scoring MP Focus projects added this week">
+        {topNew.length===0&&<div style={{color:"#666",fontSize:"12px"}}>No new MP Focus projects this scan.</div>}
+        {topNew.map(p=><div key={p.projectName} className="mp-row" onClick={()=>onSelect(p)} style={{display:"flex",justifyContent:"space-between",gap:"10px",padding:"7px 6px",borderTop:"1px solid "+C.border,cursor:"pointer"}}>
+          <span style={{color:"#fff",fontSize:"12px",minWidth:0}}><Flag country={p.country}/> {p.projectName}<span style={{color:"#777",display:"block",fontSize:"11px",marginTop:"2px"}}>{p.location}{p.capacityMW?" · "+Number(p.capacityMW).toLocaleString()+" MW":""}</span></span>
+          <ScoreBar score={p._score}/>
+        </div>)}
+      </Panel>
+    </div>
+  </div>;
 }
 const BD_TYPE_COLORS={"Developer":"#4ADE80","Tenderer":"#38BDF8","EPC":C.yellow,"Financier":"#cc77ff"};
 // Companies the scan already knows for this project, by contact type — feeds the
@@ -486,8 +560,6 @@ function BDRow({project:p,saved,sug,onSaveRow,onUpdateSug,onSelect}){
           </div>
         )}
       </td>
-      <td style={{padding:"5px 6px"}}>{ta(bdStatus,setBdStatus,"bdStatus","e.g. Engaged, Not contacted, Meeting booked…")}</td>
-      <td style={{padding:"5px 6px"}}>{ta(nextSteps,setNextSteps,"nextSteps","e.g. Follow up Q3, Send capability statement…")}</td>
     </tr>
   );
 }
@@ -509,11 +581,11 @@ function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSel
   };
   const sorted=[...visible].sort((a,b)=>{const av=acc[sKey](a),bv=acc[sKey](b);if(av<bv)return sDir==="asc"?-1:1;if(av>bv)return sDir==="asc"?1:-1;return 0;});
   const TH=({children,w,k})=><th onClick={k?()=>clickSort(k):undefined} style={{padding:"10px 10px",textAlign:"left",background:C.yellow,color:C.black,fontWeight:"bold",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.6px",whiteSpace:"nowrap",fontFamily:"Arial,sans-serif",width:w||"auto",cursor:k?"pointer":"default",userSelect:"none"}}>{children}{k&&<span style={{marginLeft:"4px",color:sKey===k?C.black:"#a88000"}}>{sKey===k?(sDir==="asc"?"▲":"▼"):"⇅"}</span>}</th>;
-  const filled=visible.filter(p=>{const d=bdOf(p);return (d.contacts&&d.contacts.length>0)||d.bdStatus||d.nextSteps;}).length;
+  const filled=visible.filter(p=>{const d=bdOf(p);return d.contacts&&d.contacts.length>0;}).length;
   return (
     <div>
       <div style={{fontFamily:"Arial,sans-serif",fontSize:"11px",color:"#888",marginBottom:"14px"}}>
-        BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{visible.length}</span>{searchQuery&&searchQuery.trim()?<span> of {projects.length} (search filtered)</span>:""} pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with notes · <span style={{color:"#4ADE80"}}>✓ auto-saved</span> locally in your browser · pin projects in the Project Table to add them here · click column headers to sort
+        BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{visible.length}</span>{searchQuery&&searchQuery.trim()?<span> of {projects.length} (search filtered)</span>:""} pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with contacts · <span style={{color:"#4ADE80"}}>✓ auto-saved</span> locally in your browser · pin projects in the Project Table to add them here · click column headers to sort
       </div>
       <div style={{marginBottom:"14px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
         <label style={{background:"#1a1a1a",color:C.yellow,border:"1px solid "+C.yellow,padding:"5px 12px",fontFamily:"Arial,sans-serif",fontSize:"11px",fontWeight:"bold",cursor:"pointer"}}>Import suggestions<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={handleImportFile}/></label>
@@ -526,13 +598,11 @@ function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSel
       {projects.length===0&&<div style={{padding:"60px 20px",textAlign:"center",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>No pinned projects yet — click 📌 on any row in the <span style={{color:C.yellow,fontWeight:"bold"}}>PROJECT TABLE</span> to add it here.</div>}
       {projects.length>0&&visible.length===0&&<div style={{padding:"60px 20px",textAlign:"center",color:"#555",fontFamily:"Arial,sans-serif",fontSize:"13px"}}>No pinned projects match your search.</div>}
       {visible.length>0&&<div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",minWidth:"980px",tableLayout:"fixed"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:"640px",tableLayout:"fixed"}}>
           <thead><tr>
-            <TH w="160px" k="name">Project Name</TH>
+            <TH w="200px" k="name">Project Name</TH>
             <TH w="90px" k="proc">Equip. Proc.</TH>
-            <TH w="230px" k="contacts">Contacts <span style={{fontWeight:"normal",textTransform:"none",letterSpacing:0,fontSize:"9px",opacity:0.7}}>— grouped by company</span></TH>
-            <TH w="230px" k="bdStatus">BD Status</TH>
-            <TH w="230px" k="next">Next Steps</TH>
+            <TH k="contacts">Contacts <span style={{fontWeight:"normal",textTransform:"none",letterSpacing:0,fontSize:"9px",opacity:0.7}}>— grouped by company</span></TH>
           </tr></thead>
           <tbody>
             {sorted.map(p=><BDRow key={p.projectName+"|"+(restoreN||0)} project={p} saved={bdOf(p)} sug={sugData[(p.projectName||"").toLowerCase()]||[]} onSaveRow={onSaveRow} onUpdateSug={onUpdateSug} onSelect={onSelect}/>)}
@@ -549,7 +619,7 @@ function App(){
   const [error,setError]=useState("");
   const [pins,setPins]=useState({});
   const [overrides,setOverrides]=useState({});
-  const [tab,setTab]=useState("table");
+  const [tab,setTab]=useState("dashboard");
   const [selected,setSelected]=useState(null);
   const [fSearch,setFSearch]=useState("");
   const [fCountry,setFCountry]=useState("All");
@@ -563,15 +633,14 @@ function App(){
   const [assetsOpen,setAssetsOpen]=useState(false);
   const [procStartOpen,setProcStartOpen]=useState(false);
   const [scanType,setScanType]=useState(null);
-  const [sortKey,setSortKey]=useState("priority");
+  const [sortKey,setSortKey]=useState("_score");
+  const [fBucket,setFBucket]=useState(null);
   const [sortDir,setSortDir]=useState("asc");
   const [bdData,setBdData]=useState({});
   const [sugData,setSugData]=useState({});
+  const [orphanPins,setOrphanPins]=useState([]);
+  const [fFocus,setFFocus]=useState(true);
   useEffect(()=>{
-    try{const raw=localStorage.getItem(PIN_KEY);if(raw)setPins(JSON.parse(raw));}catch(e){}
-    try{const raw=localStorage.getItem(OVERRIDE_KEY);if(raw)setOverrides(JSON.parse(raw));}catch(e){}
-    try{const raw=localStorage.getItem(BD_KEY);if(raw)setBdData(JSON.parse(raw));}catch(e){}
-    try{const raw=localStorage.getItem(SUG_KEY);if(raw)setSugData(JSON.parse(raw));}catch(e){}
     (async()=>{
       let cur=[],prev=[];
       try{
@@ -608,7 +677,26 @@ function App(){
           setLastScan(fileScan);setScanType("nochange");
         }
       }catch(e){if(fileScan)setLastScan(fileScan);}
-      setProjects(computeChangeStatus(cur,prev));
+      const deduped=dedupeProjects(cur);
+      // Migrate saved pins/overrides/contacts onto canonical names (fixes pins orphaned by renames/duplicates).
+      try{
+        const canon=new Map(deduped.map(p=>[keyOf(p.projectName),(p.projectName||"").toLowerCase()]));
+        deduped.forEach(p=>(p._dupNames||[]).forEach(n=>canon.set(keyOf(n),(p.projectName||"").toLowerCase())));
+        const read=k=>{try{return JSON.parse(localStorage.getItem(k)||"null")||{};}catch(e){return {};}};
+        const raw={pins:read(PIN_KEY),overrides:read(OVERRIDE_KEY),bd:read(BD_KEY),sug:read(SUG_KEY)};
+        const mergeBD=(a,b)=>({...a,...b,contacts:[...(a.contacts||[]),...(b.contacts||[])],bdStatus:a.bdStatus||b.bdStatus||"",nextSteps:a.nextSteps||b.nextSteps||""});
+        const rp=remapStore(raw.pins,canon,()=>true);
+        const ro=remapStore(raw.overrides,canon,(a,b)=>({...b,...a}));
+        const rb=remapStore(raw.bd,canon,mergeBD);
+        const rs=remapStore(raw.sug,canon,(a,b)=>[...(a||[]),...(b||[])]);
+        if(rp.changed||ro.changed||rb.changed||rs.changed){
+          if(!localStorage.getItem("mp-premigration-backup-v1"))localStorage.setItem("mp-premigration-backup-v1",JSON.stringify({saved:new Date().toISOString(),...raw}));
+          localStorage.setItem(PIN_KEY,JSON.stringify(rp.out));localStorage.setItem(OVERRIDE_KEY,JSON.stringify(ro.out));
+          localStorage.setItem(BD_KEY,JSON.stringify(rb.out));localStorage.setItem(SUG_KEY,JSON.stringify(rs.out));
+        }
+        setPins(rp.out);setOverrides(ro.out);setBdData(rb.out);setSugData(rs.out);setOrphanPins(rp.orphans);
+      }catch(e){}
+      setProjects(computeChangeStatus(deduped,dedupeProjects(prev)).map(p=>{const s=mpScore(p);return {...p,_score:s,priority:p.priority||tierOf(s)};}));
       setLoading(false);
     })();
   },[]);
@@ -629,7 +717,8 @@ function App(){
   function setEpcOverride(projectName,epc){const k=(projectName||"").toLowerCase();const no={...overrides};no[k]={...(no[k]||{}),epcContractor:epc,date:new Date().toISOString().slice(0,10)};saveOverrides(no);}
   function saveBDRow(projectName,fields){const k=(projectName||"").toLowerCase();const no={...bdData};no[k]={...(no[k]||{}),...fields};setBdData(no);try{localStorage.setItem(BD_KEY,JSON.stringify(no));}catch(e){}}
   function updateSug(projectName,arr){const k=(projectName||"").toLowerCase();const no={...sugData};if(arr&&arr.length)no[k]=arr;else delete no[k];setSugData(no);try{localStorage.setItem(SUG_KEY,JSON.stringify(no));}catch(e){}}
-  function importSug(obj){const no={...sugData};let added=0;Object.keys(obj||{}).forEach(function(kk){const key=(kk||"").toLowerCase();const inc=Array.isArray(obj[kk])?obj[kk]:[];const cur=no[key]?no[key].slice():[];inc.forEach(function(c){if(!c||(!c.name&&!c.company))return;var dup=cur.some(function(x){return (x.name||"").toLowerCase()===(c.name||"").toLowerCase()&&(x.company||"").toLowerCase()===(c.company||"").toLowerCase();});if(!dup){cur.push(c);added++;}});if(cur.length)no[key]=cur;});setSugData(no);try{localStorage.setItem(SUG_KEY,JSON.stringify(no));}catch(e){}return added;}
+  function canonName(n){const low=(n||"").toLowerCase();const k=keyOf(KEY_ALIASES[low]||low);const p=projects.find(x=>keyOf(x.projectName)===k||(x._dupNames||[]).some(d=>keyOf(d)===k));return p?(p.projectName||"").toLowerCase():low;}
+  function importSug(obj){const no={...sugData};let added=0;Object.keys(obj||{}).forEach(function(kk){const key=canonName(kk);const inc=Array.isArray(obj[kk])?obj[kk]:[];const cur=no[key]?no[key].slice():[];inc.forEach(function(c){if(!c||(!c.name&&!c.company))return;var dup=cur.some(function(x){return (x.name||"").toLowerCase()===(c.name||"").toLowerCase()&&(x.company||"").toLowerCase()===(c.company||"").toLowerCase();});if(!dup){cur.push(c);added++;}});if(cur.length)no[key]=cur;});setSugData(no);try{localStorage.setItem(SUG_KEY,JSON.stringify(no));}catch(e){}return added;}
   function clearStatusOverride(projectName){const k=(projectName||"").toLowerCase();const no={...overrides};delete no[k];saveOverrides(no);}
   const [restoreN,setRestoreN]=useState(0);
   function exportBackup(){
@@ -685,7 +774,15 @@ function App(){
     .filter(p=>fProcStart.length===0||fProcStart.includes(p.procurementStart))
     .filter(p=>!fLowConf||p.statusConfidence==="low")
     .filter(p=>!fHideStale||!isStale(p))
+    .filter(p=>!fFocus||p._pinned||p._score>=FOCUS_MIN)
+    .filter(p=>!fBucket||windowBucket(p)===fBucket)
     .sort((a,b)=>{
+      if(sortKey==="_score"){
+        if(a._pinned!==b._pinned)return a._pinned?-1:1;
+        const d=(b._score||0)-(a._score||0);
+        if(d)return sortDir==="asc"?d:-d;
+        return (Number(b.capacityMW)||0)-(Number(a.capacityMW)||0);
+      }
       if(sortKey==="priority"){
         if(a._pinned!==b._pinned)return a._pinned?-1:1;
         const av=order[a.priority]??2,bv=order[b.priority]??2;
@@ -717,8 +814,11 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFAssets([]);setFProcStart([]);setFHideStale(true);setFLowConf(false);}
-  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fAssets.length>0||fProcStart.length>0||fLowConf;
+  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFAssets([]);setFProcStart([]);setFHideStale(true);setFLowConf(false);setFBucket(null);}
+  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fAssets.length>0||fProcStart.length>0||fLowConf||!!fBucket;
+  // Dashboard drill-down: set filters and jump to the table.
+  function drill(f){resetFilters();setFFocus(f.focus!==undefined?f.focus:true);if(f.bucket)setFBucket(f.bucket);if(f.status)setFStatus([f.status]);if(f.country)setFCountry(f.country);if(f.asset)setFAssets([f.asset]);if(f.change)setFChange(f.change);setTab("table");}
+  function removeOrphanPin(k){const np={...pins};delete np[k];savePins(np);setOrphanPins(o=>o.filter(x=>x!==k));}
   function openProject(p){setSelected(p);setTab("detail");}
   function closeDetail(){setSelected(null);if(tab==="detail")setTab("table");}
   const fmt=iso=>{
@@ -766,7 +866,7 @@ function App(){
       </div>
       {loading&&<div style={{padding:"60px 28px",textAlign:"center",color:C.yellow,fontFamily:"'Courier New',monospace",fontSize:"13px"}}>Loading intelligence data…</div>}
       {error&&<div style={{padding:"20px 28px",color:"#e05050",fontFamily:"'Courier New',monospace",fontSize:"12px",background:"#1a0808",borderBottom:"1px solid "+C.border}}>⚠ {error}</div>}
-      {!loading&&(
+      {!loading&&tab!=="dashboard"&&(
         <div style={{background:"#060606",padding:"18px 28px",display:"flex",gap:"40px",flexWrap:"wrap",borderBottom:"1px solid "+C.border}}>
           <StatCard value={activeCount} label="Active Projects" accent/>
           <StatCard value={auCount+" 🇦🇺"} label="Australia"/>
@@ -782,14 +882,16 @@ function App(){
       )}
       {!loading&&(
         <div style={{background:"#060606",padding:"0 28px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"stretch",flexWrap:"wrap"}}>
-          <div style={{display:"flex"}}>
-            {[{key:"table",label:"PROJECT TABLE"},{key:"timeline",label:"ENGAGEMENT TIMELINE"},{key:"bd",label:"BD STRATEGY"},{key:"detail",label:"SELECTED PROJECT"}].map(t=>(
+          <div style={{display:"flex",overflowX:"auto",maxWidth:"100%"}}>
+            {[{key:"dashboard",label:"DASHBOARD"},{key:"table",label:"PROJECT TABLE"},{key:"bd",label:"CONTACTS"},{key:"detail",label:"SELECTED PROJECT"}].map(t=>(
               <button key={t.key} onClick={()=>setTab(t.key)} disabled={t.key==="detail"&&!selected} style={{background:"none",border:"none",borderBottom:tab===t.key?"3px solid "+C.yellow:"3px solid transparent",color:tab===t.key?C.yellow:(t.key==="detail"&&!selected)?"#444":"#bbb",fontFamily:"Arial,sans-serif",fontWeight:"bold",fontSize:"11px",textTransform:"uppercase",letterSpacing:"1.5px",padding:"14px 20px",cursor:(t.key==="detail"&&!selected)?"default":"pointer",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
                 {t.label}{t.key==="detail"&&selected&&<span style={{background:C.yellow,color:C.black,fontSize:"9px",padding:"1px 5px",borderRadius:"2px"}}>1</span>}
               </button>
             ))}
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 0",flexWrap:"wrap"}}>
+          {tab!=="dashboard"&&<div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 0",flexWrap:"wrap"}}>
+            <button onClick={()=>setFFocus(v=>!v)} title={"MP Focus: relevance score ≥ "+FOCUS_MIN+" (HV/substation/data-centre fit + procurement window + status), plus your pins"} style={{background:fFocus?C.yellow:"#0d0d0d",color:fFocus?C.black:"#bbb",border:"1px solid "+(fFocus?C.yellow:C.border),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>{fFocus?"★ MP FOCUS":"ALL PROJECTS"}</button>
+            {fBucket&&<button onClick={()=>setFBucket(null)} title="Clear engagement-window filter" style={{background:C.yellow,color:C.black,border:"1px solid "+C.yellow,padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>WINDOW: {fBucket} ✕</button>}
             <div style={{position:"relative",display:"inline-block"}}>
               <input value={fSearch} onChange={e=>setFSearch(e.target.value)} placeholder="🔍 Search projects…" style={{background:"#0d0d0d",color:C.white,border:"1px solid "+(fSearch.trim()?C.yellow:C.border),padding:"6px 26px 6px 10px",fontFamily:"Arial,sans-serif",fontSize:"11px",outline:"none",width:"180px",letterSpacing:"0.3px",boxSizing:"border-box"}}/>
               {fSearch&&<button onClick={()=>setFSearch("")} title="Clear search" style={{position:"absolute",right:"6px",top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#888",cursor:"pointer",fontSize:"13px",lineHeight:1,padding:"2px"}}>✕</button>}
@@ -850,7 +952,7 @@ function App(){
             </div>
             <button onClick={()=>setFHideStale(v=>!v)} style={{background:fHideStale?"#0d0d0d":"#7c3aed",color:fHideStale?"#bbb":C.white,border:"1px solid "+(fHideStale?"#333":"#7c3aed"),padding:"6px 10px",fontFamily:"Arial,sans-serif",fontSize:"10px",fontWeight:fHideStale?"normal":"bold",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}} title="Hides: Cancelled projects, and Under Construction where equipment procurement started more than 6 months ago. Planning & Pre-tender are never hidden.">{fHideStale?"🚧 SHOW STALE":"🚧 HIDE STALE"}</button>
             {anyFilter&&<button onClick={resetFilters} style={{background:"none",border:"1px solid #333",color:"#999",padding:"6px 12px",fontFamily:"Arial,sans-serif",fontSize:"10px",textTransform:"uppercase",letterSpacing:"0.5px",cursor:"pointer"}}>✕ RESET FILTERS</button>}
-          </div>
+          </div>}
         </div>
       )}
       {!loading&&!error&&(
@@ -873,6 +975,7 @@ function App(){
                 <table style={{width:"100%",borderCollapse:"collapse",minWidth:"980px",tableLayout:"fixed"}}>
                   <thead><tr>
                     <ColHead label="Project Name" k="projectName" style={{width:"200px"}}/>
+                    <ColHead label="Score" k="_score" style={{width:"62px"}}/>
                     <ColHead label="Location" k="location" style={{width:"115px"}}/>
                     <ColHead label="Equip. Proc." k="procurementStart" style={{width:"88px"}}/>
                     <ColHead label="Status" k="procurementStatus" style={{width:"110px"}}/>
@@ -891,9 +994,10 @@ function App(){
                           <td onClick={open} style={TD({color:C.white,fontWeight:"bold",whiteSpace:"normal",overflowWrap:"break-word"})}>
                             <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}>
                               <button onClick={e=>{e.stopPropagation();pinToggle(p);}} title={p._pinned?"Unpin":"Pin"} style={{background:"none",border:"none",color:p._pinned?C.pinActive:"#777",opacity:p._pinned?1:0.55,fontSize:p._pinned?"15px":"14px",cursor:"pointer",padding:0,lineHeight:1,filter:p._pinned?"drop-shadow(0 0 3px "+C.pinActive+")":"none"}}>📌</button>
-                              <Flag country={p.country}/><span style={{fontSize:"12px"}}>{p.projectName}</span>{isDataCentre(p)&&<DCBadge/>}<ChangeBadge status={p._changeStatus}/>
+                              <Flag country={p.country}/><span style={{fontSize:"12px"}} title={(p._dupNames||[]).length?"Also listed by the scan as: "+p._dupNames.join(" · "):undefined}>{p.projectName}</span>{isDataCentre(p)&&<DCBadge/>}<ChangeBadge status={p._changeStatus}/>
                             </div>
                           </td>
+                          <td onClick={open} title="MP relevance: asset fit + procurement window + status" style={TD({whiteSpace:"nowrap"})}><ScoreBar score={p._score}/></td>
                           <td onClick={open} style={TD(hl(p,"location",{color:"#ccc",fontSize:"11px",whiteSpace:"normal",overflowWrap:"break-word"}))}>{p.location}</td>
                           <td onClick={open} style={TD(hl(p,"procurementStart",{color:C.yellow,fontWeight:"bold",padding:"9px 8px",whiteSpace:"normal",overflowWrap:"break-word",lineHeight:1.3,fontSize:"11px"}))}>{p.procurementStart||"TBD"}</td>
                           <td onClick={open} style={TD(hl(p,"procurementStatus",{}))}><div style={{display:"flex",alignItems:"center",gap:"4px",flexWrap:"wrap"}}><Badge text={p.procurementStatus} type="status"/><ConfidenceDot confidence={p.statusConfidence}/>{p._overrideMeta&&<OverrideBadge/>}{hasDateStatusMismatch(p)&&<span title={"Equip. proc. date ("+p.procurementStart+") already passed but status is still "+p.procurementStatus+" — verify with source"} style={{color:"#f97316",fontSize:"9px",fontWeight:"bold",cursor:"help",letterSpacing:"0.3px",fontFamily:"Arial,sans-serif"}}>DATE?</span>}</div></td>
@@ -908,8 +1012,8 @@ function App(){
                 </table>
               </div>
             </div>
-          ):tab==="timeline"?(
-            <TimelineView projects={displayed} onSelect={openProject} selected={selected} onPinToggle={pinToggle}/>
+          ):tab==="dashboard"?(
+            <DashboardView projects={withPins} onDrill={drill} onSelect={openProject} orphanPins={orphanPins} onRemoveOrphan={removeOrphanPin} bdData={bdData}/>
           ):tab==="bd"?(
             <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} sugData={sugData} onSaveRow={saveBDRow} onUpdateSug={updateSug} onImportSug={importSug} onSelect={openProject} searchQuery={fSearch} onExportBackup={exportBackup} onRestoreBackup={restoreBackup} restoreN={restoreN}/>
           ):(
@@ -917,7 +1021,7 @@ function App(){
               <div style={{textAlign:"center",padding:"100px 20px"}}>
                 <div style={{fontSize:"48px",opacity:0.08,marginBottom:"16px"}}>👆</div>
                 <div style={{fontFamily:"'Calibri',Arial,sans-serif",fontWeight:"bold",fontSize:"14px",color:"#555",textTransform:"uppercase",letterSpacing:"3px"}}>NO PROJECT SELECTED</div>
-                <div style={{fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#777",marginTop:"10px"}}>Click any project in the <strong style={{color:C.yellow}}>PROJECT TABLE</strong> or <strong style={{color:C.yellow}}>TIMELINE</strong> to view its details here.</div>
+                <div style={{fontFamily:"Arial,sans-serif",fontSize:"12px",color:"#777",marginTop:"10px"}}>Click any project on the <strong style={{color:C.yellow}}>DASHBOARD</strong> or in the <strong style={{color:C.yellow}}>PROJECT TABLE</strong> to view its details here.</div>
               </div>
             )
           )}
