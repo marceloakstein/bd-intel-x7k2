@@ -9,9 +9,11 @@
 </head>
 <body style="margin:0;padding:0;background:#000;">
 <!--
-  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v6 2026-11-24)
+  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v7 2026-11-24)
   SOURCE FILE: edit index.src.html, then run `node build.js` — it precompiles the JSX into index.html
   (no Babel in the browser). Never edit the generated index.html by hand.
+  v7: "Dates to verify" KPI (stale-date flags moved out of Needs your attention), Pinned KPIs open Contacts,
+  "Other projects with the same companies" in the project drawer.
   v6: saved views (presets + your own), Owner/EPC clamped to 2 lines, only low-confidence dot shown,
   "Top owners / EPCs" dashboard panel, precompiled JSX.
   v5: project detail in a side drawer (Esc closes), overrides behind "Edit fields", palette cut to
@@ -42,7 +44,7 @@ const SUG_KEY      = "mp-bd-suggested-v1";
 const VIEWS_KEY    = "mp-views-v1";
 // Saved views: built-in presets + the user's own (localStorage). A view is a partial filter set;
 // anything it doesn't name falls back to the defaults below.
-const VIEW_DEFAULTS={focus:true,country:"All",status:[],change:"All",assets:[],procStart:[],hideStale:true,lowConf:false,bucket:null,search:""};
+const VIEW_DEFAULTS={focus:true,country:"All",status:[],change:"All",assets:[],procStart:[],hideStale:true,lowConf:false,bucket:null,search:"",verify:false};
 const PRESET_VIEWS=[
   {name:"HV Australia",preset:true,f:{focus:false,country:"Australia",assets:["HV Transmission","Substation"]}},
   {name:"Data centres",preset:true,f:{focus:false,assets:["Data Centre"]}},
@@ -241,7 +243,7 @@ function ChangeBadge({status}){
 const Flag=({country})=><span title={country} style={{fontSize:"11px",fontWeight:700,color:"#8a8a8a",border:"1px solid #333",borderRadius:"3px",padding:"0 4px",lineHeight:"16px",fontFamily:F}}>{country==="Australia"?"AU":country==="Brazil"?"BR":"—"}</span>;
 function StatCard({value,label,accent,color,onClick,active}){return <div onClick={onClick} title={onClick?"Click to filter":undefined} style={{cursor:onClick?"pointer":"default",outline:active?"1px solid "+(color||C.yellow):"none",outlineOffset:"6px"}}><div style={{fontFamily:F,fontWeight:"bold",fontSize:"30px",color:color||(accent?C.yellow:C.white),lineHeight:1}}>{value}</div><div style={{fontFamily:F,fontSize:"12px",color:C.muted,letterSpacing:"0.2px",marginTop:"4px"}}>{label}</div></div>;}
 const SectionLabel=({children})=><div style={{fontFamily:F,fontSize:"13px",color:C.yellow,letterSpacing:"0.2px",fontWeight:"bold",marginBottom:"6px",borderBottom:"1px solid "+C.border,paddingBottom:"5px"}}>{children}</div>;
-function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverride,onSetProcStart,onSetEpc}){
+function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverride,onSetProcStart,onSetEpc,related,onOpenRelated,onSearchCompany}){
   if(!p)return null;
   const [overrideDraft,setOverrideDraft]=React.useState(p._overrideMeta?.status||p.procurementStatus||"");
   const [procStartDraft,setProcStartDraft]=React.useState(p._overrideMeta?.procurementStart||p._aiProcurementStart||"");
@@ -377,6 +379,20 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
     }
   </div>;
 })()}
+          {related&&related.total>0&&<div style={{marginTop:"22px"}}>
+            <style>{`.mp-row:hover{background:#141414}`}</style>
+            <SectionLabel>Other projects with the same companies ({related.total})</SectionLabel>
+            {related.list.map(({p:q,via})=><div key={q.projectName} className="mp-row" onClick={()=>onOpenRelated(q)} title="Open this project" style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"10px",alignItems:"center",padding:"7px 4px",borderBottom:"1px solid "+C.border,cursor:"pointer"}}>
+              <div style={{minWidth:0}}>
+                <div style={{color:isStale(q)?"#777":"#fff",fontSize:"13px",fontWeight:"bold",display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}>{q._pinned&&<PinIcon on={true} size={12}/>}<Flag country={q.country}/>{q.projectName}</div>
+                <div style={{color:"#888",fontSize:"12px",marginTop:"2px"}}>via {via.join(", ")} · {q.procurementStatus||"—"} · {q.procurementStart||"TBD"}</div>
+              </div>
+              <ScoreBar score={q._score}/>
+            </div>)}
+            <div style={{display:"flex",gap:"6px 14px",flexWrap:"wrap",marginTop:"10px"}}>
+              {related.companies.map(c=><button key={c.name} onClick={()=>onSearchCompany(c.name)} title={"List every project mentioning "+c.name+" in the table"} style={{background:"none",border:"none",padding:0,color:C.yellow,fontFamily:F,fontSize:"13px",cursor:"pointer"}}>See all {c.name} projects in the table →</button>)}
+            </div>
+          </div>}
         </div>
       </div>
     </div>
@@ -405,6 +421,24 @@ function companyLeaders(list,field,n){
   list.forEach(p=>{const seen=new Set();splitCompanies(p[field]).forEach(name=>{const k=coKey(name);if(!k||seen.has(k))return;seen.add(k);const e=m.get(k)||{label:name,value:0,focus:0};if(name.length<e.label.length)e.label=name;e.value++;if(p._score>=FOCUS_MIN)e.focus++;m.set(k,e);});});
   return [...m.values()].filter(e=>e.value>1).sort((a,b)=>b.value-a.value||b.focus-a.focus||a.label.localeCompare(b.label)).slice(0,n);
 }
+// Other projects that share an owner or EPC/supplier with p (same company-key matching as the leaderboard).
+function relatedProjects(p,all,n){
+  const F2=["owner","epcContractor"];
+  const mine=new Map();
+  F2.forEach(f=>splitCompanies(p[f]).forEach(c=>{const k=coKey(c);if(k&&!mine.has(k))mine.set(k,{name:c,count:0});}));
+  if(!mine.size)return {list:[],companies:[]};
+  const out=[];
+  all.forEach(q=>{
+    if(q.projectName===p.projectName)return;
+    const hits=new Set();
+    F2.forEach(f=>splitCompanies(q[f]).forEach(c=>{const k=coKey(c);if(mine.has(k))hits.add(k);}));
+    if(!hits.size)return;
+    hits.forEach(k=>mine.get(k).count++);
+    out.push({p:q,via:[...hits].map(k=>mine.get(k).name)});
+  });
+  out.sort((a,b)=>(b.p._pinned-a.p._pinned)||(isStale(a.p)-isStale(b.p))||(b.p._score-a.p._score));
+  return {list:out.slice(0,n),total:out.length,companies:[...mine.values()].filter(c=>c.count>0).sort((a,b)=>b.count-a.count)};
+}
 function HBars({rows,onClick,max,unit,labelW,tip}){
   const m=max||Math.max(1,...rows.map(r=>r.value));
   return <div style={{display:"flex",flexDirection:"column",gap:"2px"}}>
@@ -424,29 +458,33 @@ function Panel({title,sub,children,style,className}){
     {children}
   </div>;
 }
-function DashboardView({projects,onDrill,onSelect,orphanPins,onRemoveOrphan,bdData}){
+function DashboardView({projects,onDrill,onSelect,orphanPins,onRemoveOrphan,bdData,onGoContacts}){
   const live=projects.filter(p=>!isStale(p));
   const focus=live.filter(p=>p._score>=FOCUS_MIN);
   const pinned=projects.filter(p=>p._pinned);
   const changed=focus.filter(p=>p._changeStatus);
   const noContacts=pinned.filter(p=>!((bdData[(p.projectName||"").toLowerCase()]||{}).contacts||[]).length);
-  // Needs attention: pinned projects (and top focus projects) with a reason to act.
+  // Needs attention: pinned projects (and top focus projects) with a BD reason to act.
+  // v7: data-quality flags ("date passed, status not moved") live in their own KPI, not here —
+  // and for those projects the "window open" signal is unreliable, so it isn't shown either.
+  const scope=[...pinned,...focus.filter(p=>!p._pinned)];
+  const toVerify=scope.filter(hasDateStatusMismatch);
   const reasons=p=>{
     const r=[];const b=windowBucket(p);
     if(p._changeStatus==="new")r.push({t:"New this scan",c:C.newColor});
     if(p._changeStatus==="updated")r.push({t:"Changed: "+(p._changedFields||[]).map(f=>({procurementStatus:"status",procurementStart:"proc. date",capacityMW:"MW",mpEngagementWindow:"window",projectValue:"value"}[f]||f)).join(", "),c:C.updatedColor});
-    if(b==="Now"||b==="0–6 m")r.push({t:b==="Now"?"Procurement window open":"Procurement ≤ 6 months",c:C.yellow});
-    if(hasDateStatusMismatch(p))r.push({t:"Date passed, status not moved — verify",c:"#ff5555"});
+    if(!hasDateStatusMismatch(p)&&(b==="Now"||b==="0–6 m"))r.push({t:b==="Now"?"Procurement window open":"Procurement ≤ 6 months",c:C.yellow});
     return r;
   };
-  const attention=[...pinned,...focus.filter(p=>!p._pinned)]
+  const attention=scope
     .map(p=>({p,r:reasons(p)})).filter(x=>x.r.length)
     .sort((a,b)=>(b.p._pinned-a.p._pinned)||(b.r.length-a.r.length)||(b.p._score-a.p._score)).slice(0,10);
   const kpis=[
     {v:focus.length,l:"MP Focus projects",s:"score ≥ "+FOCUS_MIN+" of "+live.length+" active",go:()=>onDrill({focus:true})},
     {v:changed.length,l:"Focus: new / updated",s:"since the last weekly scan",go:()=>onDrill({focus:true,change:changed.some(p=>p._changeStatus==="new")?"New":"Updated"})},
-    {v:pinned.length,l:"Pinned",s:"your BD shortlist",go:null},
-    {v:noContacts.length,l:"Pinned without contacts",s:"open the Contacts tab",go:null},
+    {v:pinned.length,l:"Pinned",s:"your BD shortlist",go:()=>onGoContacts(false)},
+    {v:noContacts.length,l:"Pinned without contacts",s:"open them in Contacts",go:noContacts.length?()=>onGoContacts(true):null},
+    {v:toVerify.length,l:"Dates to verify",s:"Focus/pinned: proc. date passed, status unchanged",go:toVerify.length?()=>onDrill({focus:true,verify:true}):null,warn:true},
   ];
   // Window chart uses every active project with an HV fit (not just Focus — Focus already implies a near window).
   const fit=live.filter(p=>isTxOrSub(p)||isDataCentre(p)||hasHVEquipment(p));
@@ -470,12 +508,12 @@ function DashboardView({projects,onDrill,onSelect,orphanPins,onRemoveOrphan,bdDa
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:"16px"}}>
       {kpis.map(k=><div key={k.l} className={k.go?"mp-kpi":undefined} onClick={k.go||undefined} style={{background:"#0b0b0b",border:"1px solid "+C.border,padding:"14px 16px",cursor:k.go?"pointer":"default"}}>
         <div style={{fontSize:"30px",fontWeight:"bold",color:"#fff",lineHeight:1,fontVariantNumeric:"tabular-nums"}}>{k.v}</div>
-        <div style={{color:C.yellow,fontSize:"13px",fontWeight:"bold",marginTop:"6px"}}>{k.l}</div>
+        <div style={{color:k.warn&&k.v?"#ff5555":C.yellow,fontSize:"13px",fontWeight:"bold",marginTop:"6px"}}>{k.l}</div>
         <div style={{color:C.muted,fontSize:"13px",marginTop:"2px"}}>{k.s}</div>
       </div>)}
     </div>
     <div className="mp-grid">
-      <Panel title="Needs your attention" sub="Pinned first, then top MP Focus projects with a reason to act" className="mp-wide" style={{minWidth:0}}>
+      <Panel title="Needs your attention" sub={"Pinned first, then top MP Focus projects with a BD reason to act"+(toVerify.length?" · "+toVerify.length+" with stale dates are under “Dates to verify”":"")} className="mp-wide" style={{minWidth:0}}>
         {attention.length===0&&<div style={{color:"#666",fontSize:"13px"}}>Nothing flagged this week.</div>}
         {attention.map(({p,r})=><div key={p.projectName} className="mp-row" onClick={()=>onSelect(p)} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"10px",padding:"8px 6px",borderTop:"1px solid "+C.border,cursor:"pointer"}}>
           <div style={{minWidth:0}}>
@@ -621,15 +659,15 @@ function BDRow({project:p,saved,sug,onSaveRow,onUpdateSug,onSelect}){
     </tr>
   );
 }
-function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSelect,searchQuery,onExportBackup,onRestoreBackup,restoreN}){
+function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSelect,searchQuery,onExportBackup,onRestoreBackup,restoreN,onlyNoContacts,onClearNoContacts}){
   const [importMsg,setImportMsg]=React.useState("");
   function handleImportFile(e){const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=function(){try{const obj=JSON.parse(rd.result);const n=onImportSug(obj);setImportMsg("Imported "+n+" new suggestion"+(n===1?"":"s"));}catch(err){setImportMsg("Import failed — not valid JSON");}};rd.readAsText(f);e.target.value="";}
   function handleRestoreFile(e){const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=function(){try{const obj=JSON.parse(rd.result);const n=onRestoreBackup(obj);setImportMsg(n?"Backup restored ("+n+" data set"+(n===1?"":"s")+")":"Restore failed — not a dashboard backup file");}catch(err){setImportMsg("Restore failed — not valid JSON");}};rd.readAsText(f);e.target.value="";}
   const [sKey,setSKey]=React.useState("proc");
   const [sDir,setSDir]=React.useState("asc");
   function clickSort(k){if(sKey===k)setSDir(d=>d==="asc"?"desc":"asc");else{setSKey(k);setSDir("asc");}}
-  const visible=projects.filter(p=>matchesSearch(p,searchQuery));
   const bdOf=p=>bdData[(p.projectName||"").toLowerCase()]||{};
+  const visible=projects.filter(p=>matchesSearch(p,searchQuery)).filter(p=>!onlyNoContacts||!(bdOf(p).contacts||[]).length);
   const acc={
     name:p=>String(p.projectName||"").toLowerCase(),
     proc:p=>{const d=parseProcurementDate(p.procurementStart);return d?d.getTime():Infinity;},
@@ -645,6 +683,7 @@ function BDView({projects,bdData,sugData,onSaveRow,onUpdateSug,onImportSug,onSel
       <div style={{fontFamily:F,fontSize:"13px",color:"#888",marginBottom:"14px"}}>
         BD planning for <span style={{color:C.yellow,fontWeight:"bold"}}>{visible.length}</span>{searchQuery&&searchQuery.trim()?<span> of {projects.length} (search filtered)</span>:""} pinned projects · <span style={{color:C.yellow,fontWeight:"bold"}}>{filled}</span> with contacts · <span style={{color:"#d9d9d9"}}>✓ auto-saved</span> locally in your browser · pin projects in the Project Table to add them here · click column headers to sort
       </div>
+      {onlyNoContacts&&<div style={{marginBottom:"12px"}}><button onClick={onClearNoContacts} title="Show all pinned projects again" style={{background:C.yellow,color:C.black,border:"1px solid "+C.yellow,padding:"5px 10px",fontFamily:F,fontSize:"12px",fontWeight:"bold",cursor:"pointer"}}>ONLY PINNED WITHOUT CONTACTS ✕</button></div>}
       <div style={{marginBottom:"14px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
         <label style={{background:"#1a1a1a",color:C.yellow,border:"1px solid "+C.yellow,padding:"5px 12px",fontFamily:F,fontSize:"13px",fontWeight:"bold",cursor:"pointer"}}>Import suggestions<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={handleImportFile}/></label>
         <span style={{fontFamily:F,fontSize:"12px",color:"#888"}}>load this week’s suggested_contacts.json into the drawer</span>
@@ -698,6 +737,8 @@ function App(){
   const [sugData,setSugData]=useState({});
   const [orphanPins,setOrphanPins]=useState([]);
   const [fFocus,setFFocus]=useState(true);
+  const [fVerify,setFVerify]=useState(false);
+  const [bdNoContacts,setBdNoContacts]=useState(false);
   const [userViews,setUserViews]=useState(()=>{try{const v=JSON.parse(localStorage.getItem(VIEWS_KEY)||"[]");return Array.isArray(v)?v:[];}catch(e){return [];}});
   useEffect(()=>{
     (async()=>{
@@ -836,6 +877,7 @@ function App(){
     .filter(p=>!fHideStale||!isStale(p))
     .filter(p=>!fFocus||p._pinned||p._score>=FOCUS_MIN)
     .filter(p=>!fBucket||windowBucket(p)===fBucket)
+    .filter(p=>!fVerify||hasDateStatusMismatch(p))
     .sort((a,b)=>{
       if(sortKey==="_score"){
         if(a._pinned!==b._pinned)return a._pinned?-1:1;
@@ -874,14 +916,15 @@ function App(){
       return 0;
     });
   function toggleSort(k){if(sortKey===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortKey(k);setSortDir("asc");}}
-  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFAssets([]);setFProcStart([]);setFHideStale(true);setFLowConf(false);setFBucket(null);}
-  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fAssets.length>0||fProcStart.length>0||fLowConf||!!fBucket;
+  function resetFilters(){setFSearch("");setFCountry("All");setFStatus([]);setFChange("All");setFAssets([]);setFProcStart([]);setFHideStale(true);setFLowConf(false);setFBucket(null);setFVerify(false);}
+  const anyFilter=fSearch.trim()!=""||fCountry!=="All"||fStatus.length>0||fChange!=="All"||fAssets.length>0||fProcStart.length>0||fLowConf||!!fBucket||fVerify;
   // Dashboard drill-down: set filters and jump to the table.
-  function drill(f){resetFilters();setFFocus(f.focus!==undefined?f.focus:true);if(f.bucket)setFBucket(f.bucket);if(f.status)setFStatus([f.status]);if(f.country)setFCountry(f.country);if(f.asset)setFAssets([f.asset]);if(f.change)setFChange(f.change);if(f.search)setFSearch(f.search);setTab("table");}
+  function drill(f){resetFilters();setFFocus(f.focus!==undefined?f.focus:true);if(f.bucket)setFBucket(f.bucket);if(f.status)setFStatus([f.status]);if(f.country)setFCountry(f.country);if(f.asset)setFAssets([f.asset]);if(f.change)setFChange(f.change);if(f.search)setFSearch(f.search);if(f.verify)setFVerify(true);setTab("table");}
+  function goContacts(onlyMissing){setBdNoContacts(!!onlyMissing);setFSearch("");setTab("bd");}
   // Saved views
-  const curView={focus:fFocus,country:fCountry,status:fStatus,change:fChange,assets:fAssets,procStart:fProcStart,hideStale:fHideStale,lowConf:fLowConf,bucket:fBucket,search:fSearch};
+  const curView={focus:fFocus,country:fCountry,status:fStatus,change:fChange,assets:fAssets,procStart:fProcStart,hideStale:fHideStale,lowConf:fLowConf,bucket:fBucket,search:fSearch,verify:fVerify};
   const curNorm=normView(curView);
-  function applyView(f){const v={...VIEW_DEFAULTS,...f};setFFocus(v.focus);setFCountry(v.country);setFStatus([...v.status]);setFChange(v.change);setFAssets([...v.assets]);setFProcStart([...v.procStart]);setFHideStale(v.hideStale);setFLowConf(v.lowConf);setFBucket(v.bucket);setFSearch(v.search);setTab("table");}
+  function applyView(f){const v={...VIEW_DEFAULTS,...f};setFFocus(v.focus);setFCountry(v.country);setFStatus([...v.status]);setFChange(v.change);setFAssets([...v.assets]);setFProcStart([...v.procStart]);setFHideStale(v.hideStale);setFLowConf(v.lowConf);setFBucket(v.bucket);setFSearch(v.search);setFVerify(!!v.verify);setTab("table");}
   function saveUserViews(v){setUserViews(v);try{localStorage.setItem(VIEWS_KEY,JSON.stringify(v));}catch(e){}}
   function saveCurrentView(){
     const name=(window.prompt("Name this view (filters, search and MP Focus are saved):","")||"").trim();
@@ -950,6 +993,7 @@ function App(){
           {tab!=="dashboard"&&<div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 0",flexWrap:"wrap"}}>
             <button onClick={()=>setFFocus(v=>!v)} title={"MP Focus: relevance score ≥ "+FOCUS_MIN+" (HV/substation/data-centre fit + procurement window + status), plus your pins"} style={{background:fFocus?C.yellow:"#0d0d0d",color:fFocus?C.black:"#bbb",border:"1px solid "+(fFocus?C.yellow:C.border),padding:"6px 10px",fontFamily:F,fontSize:"12px",fontWeight:"bold",letterSpacing:"0.2px",cursor:"pointer"}}>{fFocus?"★ MP FOCUS":"ALL PROJECTS"}</button>
             {fBucket&&<button onClick={()=>setFBucket(null)} title="Clear engagement-window filter" style={{background:C.yellow,color:C.black,border:"1px solid "+C.yellow,padding:"6px 10px",fontFamily:F,fontSize:"12px",fontWeight:"bold",letterSpacing:"0.2px",cursor:"pointer"}}>WINDOW: {fBucket} ✕</button>}
+            {fVerify&&<button onClick={()=>setFVerify(false)} title="Showing only projects whose procurement date has passed but status is still Planning / Pre-tender. Click to clear." style={{background:"#1a0808",color:"#ff8a8a",border:"1px solid #ff5555",padding:"6px 10px",fontFamily:F,fontSize:"12px",fontWeight:"bold",letterSpacing:"0.2px",cursor:"pointer"}}>DATES TO VERIFY ✕</button>}
             <div style={{position:"relative",display:"inline-block"}}>
               <input value={fSearch} onChange={e=>setFSearch(e.target.value)} placeholder="Search projects…" style={{background:"#0d0d0d",color:C.white,border:"1px solid "+(fSearch.trim()?C.yellow:C.border),padding:"6px 26px 6px 10px",fontFamily:F,fontSize:"13px",outline:"none",width:"180px",letterSpacing:"0.3px",boxSizing:"border-box"}}/>
               {fSearch&&<button onClick={()=>setFSearch("")} title="Clear search" style={{position:"absolute",right:"6px",top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#888",cursor:"pointer",fontSize:"14px",lineHeight:1,padding:"2px"}}>✕</button>}
@@ -1078,15 +1122,15 @@ function App(){
               </div>
             </div>
           ):tab==="dashboard"?(
-            <DashboardView projects={withPins} onDrill={drill} onSelect={openProject} orphanPins={orphanPins} onRemoveOrphan={removeOrphanPin} bdData={bdData}/>
+            <DashboardView projects={withPins} onDrill={drill} onSelect={openProject} orphanPins={orphanPins} onRemoveOrphan={removeOrphanPin} bdData={bdData} onGoContacts={goContacts}/>
           ):tab==="bd"?(
-            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} sugData={sugData} onSaveRow={saveBDRow} onUpdateSug={updateSug} onImportSug={importSug} onSelect={openProject} searchQuery={fSearch} onExportBackup={exportBackup} onRestoreBackup={restoreBackup} restoreN={restoreN}/>
+            <BDView projects={withPins.filter(p=>p._pinned)} bdData={bdData} sugData={sugData} onSaveRow={saveBDRow} onUpdateSug={updateSug} onImportSug={importSug} onSelect={openProject} searchQuery={fSearch} onExportBackup={exportBackup} onRestoreBackup={restoreBackup} restoreN={restoreN} onlyNoContacts={bdNoContacts} onClearNoContacts={()=>setBdNoContacts(false)}/>
           ):null}
         </div>
       )}
       {selected&&(()=>{const sp={...selected,...(withPins.find(p=>p.projectName===selected.projectName)||{})};return <div onClick={closeDetail} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:100,display:"flex",justifyContent:"flex-end"}}>
         <div role="dialog" aria-label={"Project detail: "+sp.projectName} onClick={e=>e.stopPropagation()} style={{width:"min(560px,100%)",height:"100%",overflowY:"auto",boxShadow:"-12px 0 32px rgba(0,0,0,0.6)"}}>
-          <DetailPanel key={sp.projectName} project={sp} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride} onSetEpc={setEpcOverride}/>
+          <DetailPanel key={sp.projectName} project={sp} related={relatedProjects(sp,withPins,8)} onOpenRelated={q=>setSelected(q)} onSearchCompany={name=>{setSelected(null);drill({focus:false,search:name});}} onClose={closeDetail} onPinToggle={pinToggle} onSetOverride={setStatusOverride} onClearOverride={clearStatusOverride} onSetProcStart={setProcStartOverride} onSetEpc={setEpcOverride}/>
         </div>
       </div>;})()}
       <div style={{borderTop:"1px solid "+C.border,padding:"14px 28px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px",fontFamily:F,fontSize:"12px"}}>
