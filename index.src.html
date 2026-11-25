@@ -9,9 +9,11 @@
 </head>
 <body style="margin:0;padding:0;background:#000;">
 <!--
-  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v7 2026-11-24)
+  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v8 2026-11-25)
   SOURCE FILE: edit index.src.html, then run `node build.js` — it precompiles the JSX into index.html
   (no Babel in the browser). Never edit the generated index.html by hand.
+  v8: second dedupe pass — same owner + country, same identifying tokens (M4, SC2, Stage 2…) and one name
+  contained in the other are merged; merged names are searchable and shown in the drawer.
   v7: "Dates to verify" KPI (stale-date flags moved out of Needs your attention), Pinned KPIs open Contacts,
   "Other projects with the same companies" in the project drawer.
   v6: saved views (presets + your own), Owner/EPC clamped to 2 lines, only low-confidence dot shown,
@@ -90,7 +92,7 @@ const ASSET_KEYS=Object.keys(ASSET_FILTERS);
 function matchesSearch(p,q){
   if(!q||!q.trim())return true;
   const s=q.trim().toLowerCase();
-  const hay=[p.projectName,p.location,p.summary,...(p.companies||[]),...(p.assetTypes||[]),...[p.owner].flat(),...[p.epcContractor].flat()].flat().join(" ").toLowerCase();
+  const hay=[p.projectName,...(p._dupNames||[]),p.location,p.summary,...(p.companies||[]),...(p.assetTypes||[]),...[p.owner].flat(),...[p.epcContractor].flat()].flat().join(" ").toLowerCase();
   return hay.includes(s);
 }
 function parseProcurementDate(s){
@@ -148,7 +150,33 @@ function dedupeProjects(list){
     const keep=richness(p)>richness(cur)?{...p,_dupNames:[...cur._dupNames,cur.projectName]}:{...cur,_dupNames:[...cur._dupNames,p.projectName]};
     by.set(k,keep);
   });
-  return [...by.values()];
+  // v8 pass 2: same owner + country, same identifying tokens (M4, SC2, Stage 2, Lot 8…)
+  // and one name's words contained in the other's ("NEXTDC M4" ⊂ "M4 Melbourne Data Centre Campus").
+  const out=[];
+  [...by.values()].forEach(p=>{
+    const sig=nameSig(p);
+    const i=out.findIndex(q=>looksSameProject(sig,q._sig));
+    if(i<0){out.push({...p,_sig:sig});return;}
+    const cur=out[i];const pWins=richness(p)>richness(cur);
+    out[i]=pWins?{...p,_sig:sig,_dupNames:[...cur._dupNames,...p._dupNames,cur.projectName]}:{...cur,_dupNames:[...cur._dupNames,...p._dupNames,p.projectName]};
+  });
+  return out.map(({_sig,...p})=>p);
+}
+const NAME_STOP=new Set("the and of de da do das dos e project projeto data centre center centres centers campus facility site development dc".split(" "));
+function nameSig(p){
+  const owners=splitCompanies(p.owner);
+  const fold=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^a-z0-9]+/).filter(Boolean);
+  const ownerWords=new Set(owners.flatMap(fold));
+  const words=fold(p.projectName).filter(w=>!NAME_STOP.has(w)&&!ownerWords.has(w));
+  const ids=words.filter(w=>/\d/.test(w)&&!/^\d+(mw|mwh|gw|gwh|kv|mva)$/.test(w));
+  return {owner:owners.length?coKey(owners[0]):"",country:String(p.country||"").toLowerCase(),words:new Set(words),ids:new Set(ids)};
+}
+function looksSameProject(a,b){
+  const same=(x,y)=>x.size===y.size&&[...x].every(v=>y.has(v));
+  const sub=(x,y)=>[...x].every(v=>y.has(v));
+  if(!a.owner||a.owner!==b.owner||a.country!==b.country||!same(a.ids,b.ids))return false;
+  if(a.ids.size)return sub(a.words,b.words)||sub(b.words,a.words);
+  return a.words.size>0&&same(a.words,b.words);
 }
 function isTxOrSub(p){return assetHay(p,/transmission|interconnector|hvdc|substation|switchyard/);}
 function monthsFromNow(d){const n=new Date();return (d.getFullYear()-n.getFullYear())*12+(d.getMonth()-n.getMonth());}
@@ -190,10 +218,12 @@ function remapStore(obj,canonByKey,merge){
   return {out,orphans,changed};
 }
 function computeChangeStatus(cur, prev){
-  const prevMap=new Map((prev||[]).filter(p=>p&&p.projectName).map(p=>[keyOf(p.projectName),p]));
+  const prevMap=new Map();
+  (prev||[]).filter(p=>p&&p.projectName).forEach(p=>[p.projectName,...(p._dupNames||[])].forEach(n=>{const k=keyOf(n);if(!prevMap.has(k))prevMap.set(k,p);}));
   const watch=["procurementStatus","procurementStart","capacityMW","mpEngagementWindow","projectValue"];
   return cur.map(p=>{
-    const pr=prevMap.get(keyOf(p.projectName));
+    const hit=[p.projectName,...(p._dupNames||[])].map(keyOf).find(k=>prevMap.has(k));
+    const pr=hit?prevMap.get(hit):null;
     if(!pr) return {...p,_changeStatus:"new",_changedFields:[]};
     const cf=watch.filter(f=>String(p[f]??"")!==String(pr[f]??""));
     return {...p,_changeStatus:cf.length?"updated":null,_changedFields:cf};
@@ -263,7 +293,10 @@ function DetailPanel({project:p,onClose,onPinToggle,onSetOverride,onClearOverrid
     <div style={{background:"#0b0b0b",borderTop:"3px solid "+C.yellow,minHeight:"100%",fontFamily:F}}>
       <div style={{padding:"16px 20px",borderBottom:"1px solid "+C.border,position:"sticky",top:0,background:"#0b0b0b",zIndex:1}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px"}}>
-          <div style={{fontWeight:700,fontSize:"18px",color:C.white,lineHeight:1.3}}>{p.projectName}</div>
+          <div style={{minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:"18px",color:C.white,lineHeight:1.3}}>{p.projectName}</div>
+            {(()=>{const alt=[...new Set((p._dupNames||[]).filter(n=>n!==p.projectName))];return alt.length?<div style={{fontSize:"12px",color:"#999",marginTop:"4px",lineHeight:1.4}}>Also listed by the scan as: {alt.join(" · ")}</div>:null;})()}
+          </div>
           <div style={{display:"flex",gap:"6px",alignItems:"center",flexShrink:0}}>
             {onPinToggle&&<button onClick={()=>onPinToggle(p)} title={p._pinned?"Unpin":"Pin to your shortlist"} style={{display:"flex",alignItems:"center",gap:"6px",background:p._pinned?C.yellow:"none",border:"1px solid "+(p._pinned?C.yellow:"#444"),color:p._pinned?C.black:"#ddd",fontSize:"13px",cursor:"pointer",padding:"5px 10px",fontFamily:F,fontWeight:600}}><PinIcon on={false} size={13}/>{p._pinned?"Pinned":"Pin"}</button>}
             <button onClick={onClose} title="Close (Esc)" aria-label="Close" style={{background:"none",border:"1px solid #333",color:"#bbb",fontSize:"16px",cursor:"pointer",lineHeight:1,padding:"5px 9px"}}>✕</button>
