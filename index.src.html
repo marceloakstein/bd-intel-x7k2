@@ -9,9 +9,11 @@
 </head>
 <body style="margin:0;padding:0;background:#000;">
 <!--
-  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v9 2026-11-25)
+  MADEPARTNERS Renewable Energy Market Intelligence — GitHub Pages build (v10 2026-11-25)
   SOURCE FILE: edit index.src.html, then run `node build.js` — it precompiles the JSX into index.html
   (no Babel in the browser). Never edit the generated index.html by hand.
+  v10: tab, filters, sort and the open project are kept in the URL (?tab=table&country=Australia&p=...),
+  so any view can be shared or bookmarked; "Copy link to this view" button next to Views.
   v9: reads status-checks.json (weekly Make scenario "BD Status Verify") and applies the re-checked
   status / date / EPC with safety rules; "✓ checked dd/mm" in the table, "Status re-check" box in the drawer.
   v8: second dedupe pass — same owner + country, same identifying tokens (M4, SC2, Stage 2…) and one name
@@ -56,6 +58,35 @@ const PRESET_VIEWS=[
   {name:"Data centres",preset:true,f:{focus:false,assets:["Data Centre"]}},
   {name:"Open tenders",preset:true,f:{focus:false,status:["Pre-tender","Tender Active"]}},
 ];
+// v10: tab, filters, sort and the open project live in the URL (shareable / bookmarkable).
+// Only non-default values are written; other params (e.g. ?checks=test) are kept.
+const URL_KEYS=["tab","focus","country","status","change","assets","proc","stale","low","bucket","q","verify","sort","dir","p"];
+const URL0=(()=>{const o={};try{const s=new URLSearchParams(location.search);
+  const list=k=>s.has(k)?s.get(k).split("|").filter(Boolean):undefined;
+  const bool=k=>s.has(k)?s.get(k)==="1":undefined;
+  if(["dashboard","table","bd"].includes(s.get("tab")))o.tab=s.get("tab");
+  o.focus=bool("focus");o.stale=bool("stale");o.low=bool("low");o.verify=bool("verify");
+  if(s.get("country"))o.country=s.get("country");
+  if(["New","Updated"].includes(s.get("change")))o.change=s.get("change");
+  o.status=list("status");o.assets=list("assets");o.proc=list("proc");
+  if(s.get("bucket"))o.bucket=s.get("bucket");
+  if(s.get("q"))o.q=s.get("q");
+  if(s.get("sort"))o.sort=s.get("sort");
+  if(["asc","desc"].includes(s.get("dir")))o.dir=s.get("dir");
+  if(s.get("p"))o.p=s.get("p");
+}catch(e){}return o;})();
+const u0=(k,d)=>URL0[k]!==undefined?URL0[k]:d;
+function writeUrl(st){
+  try{const s=new URLSearchParams(location.search);URL_KEYS.forEach(k=>s.delete(k));
+    const set=(k,v,d)=>{if(Array.isArray(v)){if(v.length)s.set(k,v.join("|"));}else if(v!==d&&v!==null&&v!==undefined&&v!=="")s.set(k,typeof v==="boolean"?(v?"1":"0"):String(v));};
+    set("tab",st.tab,"dashboard");set("focus",st.focus,true);set("country",st.country,"All");set("status",st.status);
+    set("change",st.change,"All");set("assets",st.assets);set("proc",st.procStart);set("stale",st.hideStale,true);
+    set("low",st.lowConf,false);set("bucket",st.bucket,null);set("q",(st.search||"").trim(),"");set("verify",st.verify,false);
+    set("sort",st.sortKey,"_score");set("dir",st.sortDir,"asc");set("p",st.p,"");
+    const qs=s.toString().replace(/%7C/gi,"|");const next=location.pathname+(qs?"?"+qs:"")+location.hash;
+    if(next!==location.pathname+location.search+location.hash)history.replaceState(null,"",next);
+  }catch(e){}
+}
 function normView(f){const v={...VIEW_DEFAULTS,...(f||{})};return JSON.stringify({...v,status:[...v.status].sort(),assets:[...v.assets].sort(),procStart:[...v.procStart].sort(),search:(v.search||"").trim().toLowerCase()});}
 const C = {
   yellow:"#FDB422", black:"#000000", white:"#FFFFFF",
@@ -806,28 +837,28 @@ function App(){
   const [error,setError]=useState("");
   const [pins,setPins]=useState({});
   const [overrides,setOverrides]=useState({});
-  const [tab,setTab]=useState("dashboard");
+  const [tab,setTab]=useState(u0("tab","dashboard"));
   const [selected,setSelected]=useState(null);
-  const [fSearch,setFSearch]=useState("");
-  const [fCountry,setFCountry]=useState("All");
-  const [fStatus,setFStatus]=useState([]);
-  const [fChange,setFChange]=useState("All");
-  const [fHideStale,setFHideStale]=useState(true);
-  const [fLowConf,setFLowConf]=useState(false);
-  const [fAssets,setFAssets]=useState([]);
-  const [fProcStart,setFProcStart]=useState([]);
+  const [fSearch,setFSearch]=useState(u0("q",""));
+  const [fCountry,setFCountry]=useState(u0("country","All"));
+  const [fStatus,setFStatus]=useState(u0("status",[]));
+  const [fChange,setFChange]=useState(u0("change","All"));
+  const [fHideStale,setFHideStale]=useState(u0("stale",true));
+  const [fLowConf,setFLowConf]=useState(u0("low",false));
+  const [fAssets,setFAssets]=useState(u0("assets",[]).filter(k=>ASSET_FILTERS[k]));
+  const [fProcStart,setFProcStart]=useState(u0("proc",[]));
   const [statusOpen,setStatusOpen]=useState(false);
   const [assetsOpen,setAssetsOpen]=useState(false);
   const [procStartOpen,setProcStartOpen]=useState(false);
   const [scanType,setScanType]=useState(null);
-  const [sortKey,setSortKey]=useState("_score");
-  const [fBucket,setFBucket]=useState(null);
-  const [sortDir,setSortDir]=useState("asc");
+  const [sortKey,setSortKey]=useState(u0("sort","_score"));
+  const [fBucket,setFBucket]=useState(u0("bucket",null));
+  const [sortDir,setSortDir]=useState(u0("dir","asc"));
   const [bdData,setBdData]=useState({});
   const [sugData,setSugData]=useState({});
   const [orphanPins,setOrphanPins]=useState([]);
-  const [fFocus,setFFocus]=useState(true);
-  const [fVerify,setFVerify]=useState(false);
+  const [fFocus,setFFocus]=useState(u0("focus",true));
+  const [fVerify,setFVerify]=useState(u0("verify",false));
   const [bdNoContacts,setBdNoContacts]=useState(false);
   const [userViews,setUserViews]=useState(()=>{try{const v=JSON.parse(localStorage.getItem(VIEWS_KEY)||"[]");return Array.isArray(v)?v:[];}catch(e){return [];}});
   useEffect(()=>{
@@ -1027,6 +1058,23 @@ function App(){
   function removeOrphanPin(k){const np={...pins};delete np[k];savePins(np);setOrphanPins(o=>o.filter(x=>x!==k));}
   function openProject(p){setSelected(p);}
   function closeDetail(){setSelected(null);}
+  // v10: keep the URL in sync with the view; reopen the project named in ?p= once data is loaded.
+  const urlOpened=React.useRef(false);
+  useEffect(()=>{
+    if(loading||urlOpened.current)return;urlOpened.current=true;
+    if(!URL0.p)return;const k=keyOf(URL0.p);
+    const hit=withPins.find(x=>keyOf(x.projectName)===k||(x._dupNames||[]).some(d=>keyOf(d)===k));
+    if(hit)setSelected(hit);
+  },[loading]);
+  useEffect(()=>{
+    writeUrl({tab,focus:fFocus,country:fCountry,status:fStatus,change:fChange,assets:fAssets,procStart:fProcStart,hideStale:fHideStale,lowConf:fLowConf,bucket:fBucket,search:fSearch,verify:fVerify,sortKey,sortDir,
+      p:selected?selected.projectName:(urlOpened.current?"":(URL0.p||""))});
+  },[tab,fFocus,fCountry,fStatus,fChange,fAssets,fProcStart,fHideStale,fLowConf,fBucket,fSearch,fVerify,sortKey,sortDir,selected,loading]);
+  const [linkCopied,setLinkCopied]=useState(false);
+  function copyLink(){
+    const done=()=>{setLinkCopied(true);setTimeout(()=>setLinkCopied(false),1800);};
+    try{navigator.clipboard.writeText(location.href).then(done,()=>{window.prompt("Copy this link:",location.href);});}catch(e){window.prompt("Copy this link:",location.href);}
+  }
   useEffect(()=>{if(!selected)return;const k=e=>{if(e.key==="Escape")setSelected(null);};document.addEventListener("keydown",k);return ()=>document.removeEventListener("keydown",k);},[selected]);
   const fmt=iso=>{
     if(!iso)return "Unknown";
@@ -1162,6 +1210,7 @@ function App(){
                   {!v.preset&&<button onClick={()=>deleteUserView(v.name)} title="Delete this view" aria-label={"Delete view "+v.name} style={{background:"none",border:"none",borderLeft:"1px solid "+(on?"#b07d10":"#333"),color:on?C.black:"#777",cursor:"pointer",fontSize:"12px",padding:"5px 7px"}}>✕</button>}
                 </span>;})}
                 {!matched&&<button onClick={saveCurrentView} title="Save the current filters as a named view (kept in this browser)" style={{background:"none",border:"1px dashed #555",color:"#bbb",fontFamily:F,fontSize:"13px",padding:"5px 10px",cursor:"pointer"}}>+ Save current view</button>}
+                <button onClick={copyLink} title="Copy a link to exactly this view (filters, sort and open project) to share or bookmark" style={{marginLeft:"auto",background:"none",border:"1px solid "+(linkCopied?C.yellow:"#444"),color:linkCopied?C.yellow:"#bbb",fontFamily:F,fontSize:"13px",padding:"5px 10px",cursor:"pointer"}}>{linkCopied?"✓ Link copied":"Copy link to this view"}</button>
               </div>;})()}
               <div style={{color:"#888",fontFamily:F,fontSize:"13px",marginBottom:"12px",display:"flex",gap:"16px",flexWrap:"wrap"}}>
                 <span>Showing {displayed.length} of {withPins.length} projects — click a row for details</span>
